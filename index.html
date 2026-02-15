@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>LWON Studio</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#257bf4",
+                        "primary-hover": "#1a6bd8",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#020617",
+                        "surface-dark": "#0f172a",
+                        "surface-darker": "#1e293b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .striped-bg {
+            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+            background-size: 1rem 1rem;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 font-display min-h-screen flex flex-col overflow-hidden">
+
+<!-- Navbar -->
+<nav class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-surface-dark flex items-center justify-between px-6 shrink-0 z-20">
+    <div class="flex items-center gap-8">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold text-lg">L</div>
+            <span class="font-bold text-lg tracking-tight">LWON Studio</span>
+        </div>
+        <div class="hidden md:flex items-center gap-1">
+            <button onclick="switchView('converter')" id="btn-converter" class="nav-btn px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg">Converter</button>
+            <button onclick="switchView('validator')" id="btn-validator" class="nav-btn px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Validator</button>
+            <button onclick="switchView('docs')" id="btn-docs" class="nav-btn px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Documentation</button>
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden relative">
+
+    <!-- CONVERTER VIEW -->
+    <div id="view-converter" class="view-pane absolute inset-0 flex flex-col lg:flex-row">
+        <!-- Input Pane -->
+        <div class="flex-1 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0b1120] min-w-0">
+            <div class="h-14 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                <div class="flex items-center gap-6">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">INPUT</span>
+                    <div class="flex bg-slate-100 dark:bg-surface-dark p-0.5 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                        <button onclick="setDirection('json2lwon')" id="btn-dir-json2lwon" class="px-3 py-1 text-xs font-medium bg-white dark:bg-primary text-slate-800 dark:text-white shadow-sm rounded-md transition-all">JSON &rarr; LWON</button>
+                        <button onclick="setDirection('lwon2json')" id="btn-dir-lwon2json" class="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all">LWON &rarr; JSON</button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadSample()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
+                        <span class="material-icons text-[16px]">code</span> Load Sample
+                    </button>
+                    <button onclick="clearEditors()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors">
+                        <span class="material-icons text-[16px]">delete_outline</span> Clear
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 relative">
+                <textarea id="converterInput" class="w-full h-full p-6 bg-transparent border-none resize-none focus:ring-0 font-mono text-sm leading-6 text-slate-800 dark:text-slate-300 custom-scrollbar" placeholder="// Paste content here..." spellcheck="false"></textarea>
+                <div class="absolute bottom-6 right-6 z-10">
+                    <button onclick="convert()" class="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-medium rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-95 group">
+                        <span>Convert</span>
+                        <span class="material-icons text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Pane -->
+        <div class="flex-1 flex flex-col bg-slate-50 dark:bg-[#020617] min-w-0">
+            <div class="h-14 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-surface-dark/50">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">OUTPUT</span>
+                    <span id="statusBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">Success</span>
+                </div>
+                <button onclick="copyOutput()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors">
+                    <span class="material-icons text-[16px]">content_copy</span> Copy
+                </button>
+            </div>
+            <div class="flex-1 relative border-b border-slate-200 dark:border-slate-800">
+                <textarea id="converterOutput" class="w-full h-full p-6 bg-transparent border-none resize-none focus:ring-0 font-mono text-sm leading-6 text-slate-600 dark:text-slate-400 custom-scrollbar" readonly spellcheck="false"></textarea>
+            </div>
+            
+            <!-- Statistics Panel -->
+            <div class="h-36 shrink-0 bg-white dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 flex flex-col">
+                <div class="flex items-center justify-between px-6 py-2 border-b border-slate-100 dark:border-slate-800/50">
+                    <h3 class="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Metrics</h3>
+                    <div class="flex items-center gap-2">
+                        <span id="statRatio" class="text-xs font-bold text-emerald-500">0% Saving</span>
+                    </div>
+                </div>
+                <div class="flex-1 px-6 py-3 flex flex-col justify-center gap-3">
+                    <div class="flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] uppercase text-slate-400">JSON</span>
+                            <span id="statOriginal" class="text-sm font-mono text-slate-700 dark:text-slate-200 line-clamp-1">0 bytes</span>
+                        </div>
+                        <span class="material-icons text-slate-400 text-sm">trending_down</span>
+                        <div class="flex flex-col text-right">
+                            <span class="text-[9px] uppercase text-slate-400">LWON</span>
+                            <span id="statLwon" class="text-sm font-mono text-primary line-clamp-1">0 bytes</span>
+                        </div>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                        <div id="barLwon" class="h-full bg-primary" style="width: 0%"></div>
+                        <div id="barSaving" class="h-full bg-emerald-500 striped-bg" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VALIDATOR VIEW -->
+    <div id="view-validator" class="view-pane hidden absolute inset-0 flex flex-col p-6 bg-slate-50 dark:bg-[#0b1120] overflow-y-auto">
+        <div class="max-w-4xl mx-auto w-full flex flex-col gap-6 pb-12">
+            <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">LWON Validator</h2>
+            <div class="h-[500px] bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                    <span class="text-sm font-medium text-slate-500">Paste LWON to validate</span>
+                    <button onclick="validate()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors">Check Syntax</button>
+                </div>
+                <textarea id="validatorInput" class="flex-1 p-6 bg-transparent resize-none focus:ring-0 font-mono text-sm leading-6 dark:text-slate-300 custom-scrollbar" placeholder="Paste LWON content..."></textarea>
+            </div>
+            <div id="validatorResult" class="hidden p-4 rounded-xl border"></div>
+        </div>
+    </div>
+
+    <!-- DOCUMENTATION VIEW -->
+    <div id="view-docs" class="view-pane hidden absolute inset-0 flex flex-col p-6 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-[#0b1120]">
+        <div class="max-w-5xl mx-auto w-full pb-12">
+            
+            <!-- Sözdizimi Referansı Kısmı -->
+            <div class="mb-12">
+                <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">Sözdizimi Referansı</h1>
+                <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-8 space-y-6">
+                    <div class="prose dark:prose-invert max-w-none">
+                        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            LWON belgeleri iki ana bölümden oluşur: <strong>Şema (Schema)</strong> ve <strong>Veri Gövdesi (Data Body)</strong>. 
+                            Şema, verinin yapısını; Veri Gövdesi ise şemada tanımlanan sıraya göre asıl değerleri temsil eder.
+                        </p>
+                    </div>
+
+                    <div class="relative group">
+                        <div class="absolute -top-3 left-4 px-2 py-0.5 bg-primary text-[10px] font-bold text-white rounded uppercase tracking-widest z-10">Tam Örnek (Full Example)</div>
+                        <div class="p-6 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm border border-slate-200 dark:border-slate-800 shadow-inner">
+                            <div class="text-amber-500 mb-4">// Bölüm 1: Schema (id, name, nested object, and arrays)</div>
+                            <div class="text-primary mb-6">id name settings[theme] [orders[id total]] [tags]</div>
+                            
+                            <div class="text-emerald-500 mb-4">// Bölüm 2: Data Body (records as arrays within a root array)</div>
+                            <div class="text-slate-400">[</div>
+                            <div class="pl-6 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span class="text-slate-400">[</span>
+                                <span class="text-blue-500">101</span>
+                                <span class="text-emerald-500">"Emre"</span>
+                                <span class="text-slate-400">[</span><span class="text-emerald-500">"dark"</span><span class="text-slate-400">]</span>
+                                <span class="text-slate-400">[[</span><span class="text-blue-500">5001 75.5</span><span class="text-slate-400">] [</span><span class="text-blue-500">5002 120</span><span class="text-slate-400">]]</span>
+                                <span class="text-emerald-500">["vip" "ai"]</span>
+                                <span class="text-slate-400">]</span>
+                            </div>
+                            <div class="pl-6 flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                                <span class="text-slate-400">[</span>
+                                <span class="text-blue-500">102</span>
+                                <span class="text-emerald-500">"Selin"</span>
+                                <span class="text-slate-400">[</span><span class="text-emerald-500">"light"</span><span class="text-slate-400">]</span>
+                                <span class="text-slate-400">[[</span><span class="text-blue-500">5003 440</span><span class="text-slate-400">]]</span>
+                                <span class="text-slate-400">{}</span>
+                                <span class="text-slate-400">]</span>
+                            </div>
+                            <div class="text-slate-400">]</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800/20 rounded-lg border border-slate-100 dark:border-slate-800/50">
+                            <span class="font-bold text-amber-500 block mb-1">Şema Kuralları:</span>
+                            <ul class="list-disc pl-4 space-y-1 text-slate-500">
+                                <li><code>key</code>: Basit alan</li>
+                                <li><code>[key]</code>: Basit dizi</li>
+                                <li><code>key[sub]</code>: Tekil obje</li>
+                                <li><code>[key[sub]]</code>: Obje dizisi</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800/20 rounded-lg border border-slate-100 dark:border-slate-800/50">
+                            <span class="font-bold text-emerald-500 block mb-1">Veri Kuralları:</span>
+                            <ul class="list-disc pl-4 space-y-1 text-slate-500">
+                                <li>Değerler şema sırasına göredir.</li>
+                                <li>Her kayıt bir arraydir <code>[...]</code>.</li>
+                                <li>Body ana bir array içindedir <code>[...]</code>.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Veri Tipleri Kısmı -->
+            <div class="mb-12">
+                <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">Veri Tipleri</h1>
+                <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                <th class="px-8 py-5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">TÜR (TYPE)</th>
+                                <th class="px-8 py-5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">AÇIKLAMA</th>
+                                <th class="px-8 py-5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">LWON ÖRNEK</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
+                            <!-- String -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-pink-500 text-xl">text_fields</span>
+                                        <span class="font-bold text-pink-500">String</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                                    Metin verileri için kullanılır. Standart çift tırnaklar arasına yazılır.
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-emerald-500 border border-slate-200 dark:border-slate-800/50">
+                                        "Merhaba Dünya"
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Number -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-blue-500 text-xl">numbers</span>
+                                        <span class="font-bold text-blue-500">Number</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-sm">
+                                    Tam sayılar ve ondalıklı sayılar doğrudan yazılır. Negatif değerler desteklenir.
+                                </td>
+                                <td class="px-8 py-6 space-y-2">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-blue-500 border border-slate-200 dark:border-slate-800/50">
+                                        42.5
+                                    </div>
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-blue-500 border border-slate-200 dark:border-slate-800/50">
+                                        -1200
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Boolean -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-cyan-500 text-xl">toggle_on</span>
+                                        <span class="font-bold text-cyan-500">Boolean</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                                    Mantıksal değerler <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-500">true</code> veya <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-500">false</code> olarak yazılır.
+                                </td>
+                                <td class="px-8 py-6 space-y-2">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-cyan-500 border border-slate-200 dark:border-slate-800/50">
+                                        true
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Date -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-amber-500 text-xl">event</span>
+                                        <span class="font-bold text-amber-500">Date</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                                    Tarih ve zaman verileri ISO 8601 formatında çift tırnaklar arasına yazılır.
+                                </td>
+                                <td class="px-8 py-6 space-y-2">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-amber-600 border border-slate-200 dark:border-slate-800/50">
+                                        "2026-02-16"
+                                    </div>
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-amber-600 border border-slate-200 dark:border-slate-800/50">
+                                        "2026-02-16T14:30:00Z"
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Null -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-slate-400 text-xl">not_interested</span>
+                                        <span class="font-bold text-slate-400">Null</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                                    Tanımsız değerler için <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{}</code> kullanılır.
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-slate-400 border border-slate-200 dark:border-slate-800/50">
+                                        {}
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Array (Empty) -->
+                            <tr class="group hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-icons text-emerald-500 text-xl">data_array</span>
+                                        <span class="font-bold text-emerald-500">Array</span>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                                    Dizi veya liste türündeki veriler köşeli parantez içinde tutulur. Boş diziler de tıpkı diğer boş tipler gibi <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-emerald-500">{}</code> ile gösterilir.
+                                </td>
+                                <td class="px-8 py-6 space-y-2">
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-emerald-500 border border-slate-200 dark:border-slate-800/50">
+                                        ["premium" "ai"]
+                                    </div>
+                                    <div class="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl font-mono text-sm text-emerald-500 border border-slate-200 dark:border-slate-800/50">
+                                        {}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Örnek Senaryolar Kısmı -->
+            <div class="mb-12">
+                <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">Uygulama Senaryoları</h1>
+                <div class="grid grid-cols-1 gap-8">
+                    
+                    <!-- Scenario 1: Product Inventory -->
+                    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col lg:flex-row">
+                        <div class="lg:w-1/2 p-8 bg-slate-50 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2 mb-6">
+                                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-200">Envanter Takibi</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <div class="absolute -top-2.5 left-3 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-[9px] font-bold rounded uppercase tracking-wider text-slate-600 dark:text-slate-400">LWON</div>
+                                    <div class="p-4 bg-white dark:bg-slate-900 rounded-xl font-mono text-xs border border-slate-200 dark:border-slate-800 shadow-inner overflow-x-auto whitespace-nowrap">
+                                        <div class="text-primary mb-3">sku title price stock active</div>
+                                        <div class="text-slate-400">[</div>
+                                        <div class="pl-4">["PX-1" "Ultra Monitor" 4200 15 true]</div>
+                                        <div class="pl-4">["PX-2" "Webcam HD" 850 0 false]</div>
+                                        <div class="text-slate-400">]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:w-1/2 p-8">
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Alan - Tip - Değer Haritası</h4>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">sku</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-500 border border-pink-500/20">String</span>
+                                        <span class="text-sm font-mono text-slate-400">"PX-1"</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">price</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">Number</span>
+                                        <span class="text-sm font-mono text-slate-400">4200</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">active</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">Boolean</span>
+                                        <span class="text-sm font-mono text-slate-400">true</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario 2: IoT Sensor -->
+                    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col lg:flex-row">
+                        <div class="lg:w-1/2 p-8 bg-slate-50 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2 mb-6">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-200">IoT Sensör Verisi</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <div class="absolute -top-2.5 left-3 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-[9px] font-bold rounded uppercase tracking-wider text-slate-600 dark:text-slate-400">LWON</div>
+                                    <div class="p-4 bg-white dark:bg-slate-900 rounded-xl font-mono text-xs border border-slate-200 dark:border-slate-800 shadow-inner overflow-x-auto whitespace-nowrap">
+                                        <div class="text-primary mb-3">node_id temp timestamp error</div>
+                                        <div class="text-slate-400">[</div>
+                                        <div class="pl-4">[1001 24.5 "2026-02-16T12:00" {}]</div>
+                                        <div class="text-slate-400">]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:w-1/2 p-8">
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Alan - Tip - Değer Haritası</h4>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">temp</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">Number</span>
+                                        <span class="text-sm font-mono text-slate-400">24.5</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">timestamp</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Date</span>
+                                        <span class="text-sm font-mono text-slate-400">"2026-02-16..."</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">error</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-500 border border-slate-500/20">Null</span>
+                                        <span class="text-sm font-mono text-slate-400">{}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario 3: Complex Nested Structure -->
+                    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col lg:flex-row">
+                        <div class="lg:w-1/2 p-8 bg-slate-50 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2 mb-6">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-200">Karmaşık Yapı (Nested)</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <div class="absolute -top-2.5 left-3 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-[9px] font-bold rounded uppercase tracking-wider text-slate-600 dark:text-slate-400">LWON</div>
+                                    <div class="p-4 bg-white dark:bg-slate-900 rounded-xl font-mono text-xs border border-slate-200 dark:border-slate-800 shadow-inner overflow-x-auto whitespace-nowrap">
+                                        <div class="text-primary mb-3">id info[ver name] [[tags[slug]]]</div>
+                                        <div class="text-slate-400">[</div>
+                                        <div class="pl-4">[1 [1.0 "App"] [["beta"] ["web"]]]</div>
+                                        <div class="text-slate-400">]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:w-1/2 p-8">
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Alan - Tip - Değer Haritası</h4>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">info[ver]</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">Object-Num</span>
+                                        <span class="text-sm font-mono text-slate-400">1.0</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">[tags]</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Array</span>
+                                        <span class="text-sm font-mono text-slate-400">{}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">tag slug</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-500 border border-pink-500/20">String</span>
+                                        <span class="text-sm font-mono text-slate-400">"beta"</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario 4: Simple Arrays -->
+                    <div class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col lg:flex-row">
+                        <div class="lg:w-1/2 p-8 bg-slate-50 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2 mb-6">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-200">Primitif Diziler (Tags)</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <div class="absolute -top-2.5 left-3 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-[9px] font-bold rounded uppercase tracking-wider text-slate-600 dark:text-slate-400">LWON</div>
+                                    <div class="p-4 bg-white dark:bg-slate-900 rounded-xl font-mono text-xs border border-slate-200 dark:border-slate-800 shadow-inner overflow-x-auto whitespace-nowrap">
+                                        <div class="text-primary mb-3">name [tags]</div>
+                                        <div class="text-slate-400">[</div>
+                                        <div class="pl-4">["Emre" ["premium" "ai"]]</div>
+                                        <div class="pl-4">["Selin" {}]</div>
+                                        <div class="text-slate-400">]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:w-1/2 p-8">
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Dönüşüm Detayı</h4>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">tags (dolu)</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">JSON Array</span>
+                                        <span class="text-sm font-mono text-slate-400">["p", "a"]</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50">
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">tags (boş)</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-500 border border-slate-500/20">Null/Empty</span>
+                                        <span class="text-sm font-mono text-slate-400">{}</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
+                                    <p class="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed">
+                                        <strong>Not:</strong> Primitif diziler (string dizi, sayı dizisi vb.) LWON'da otomatik olarak köşeli parantez içinde boşlukla ayrılarak serialize edilir.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<script>
+    // State
+    let direction = 'json2lwon';
+    
+    // Sample Data
+    const sampleLWON = `id name balance lastLogin rating [orders[id date total]] settings[theme notifications] [tags]
+
+[
+  [ 101 "Emre" 450.75 "2026-02-16T14:30:00Z" 4.8 [ [5001 "2026-02-15" 120.50] [5002 "2026-02-16" 45.00] ] ["dark" true] ["premium" "ai"] ]
+  [ 102 "Selin" -120.40 "2026-02-18T18:45:12Z" {} [ [5003 "2026-02-17" 2450.00] [5004 "2026-02-18" 12.99] ] ["light" false] {} ]
+  [ 103 "Can" 0.00 "2026-01-01T00:00:00Z" 3.5 {} ["high-contrast" true] ["free"] ]
+]`;
+
+    const sampleJSON = `[
+  {
+    "id": 101,
+    "name": "Emre",
+    "balance": 450.75,
+    "lastLogin": "2026-02-16T14:30:00Z",
+    "rating": 4.8,
+    "orders": [
+      {
+        "id": 5001,
+        "date": "2026-02-15",
+        "total": 120.5
+      },
+      {
+        "id": 5002,
+        "date": "2026-02-16",
+        "total": 45.0
+      }
+    ],
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    },
+    "tags": ["premium", "ai"]
+  },
+  {
+    "id": 102,
+    "name": "Selin",
+    "balance": -120.4,
+    "lastLogin": "2026-02-18T18:45:12Z",
+    "orders": [
+      {
+        "id": 5003,
+        "date": "2026-02-17",
+        "total": 2450.0
+      },
+      {
+        "id": 5004,
+        "date": "2026-02-18",
+        "total": 12.99
+      }
+    ],
+    "settings": {
+      "theme": "light",
+      "notifications": false
+    }
+  },
+  {
+    "id": 103,
+    "name": "Can",
+    "balance": 0.0,
+    "lastLogin": "2026-01-01T00:00:00Z",
+    "rating": 3.5,
+    "settings": {
+      "theme": "high-contrast",
+      "notifications": true
+    },
+    "tags": ["free"]
+  }
+]`;
+
+    // UI Logic
+    function switchView(viewName) {
+        document.querySelectorAll('.view-pane').forEach(el => {
+            el.classList.add('hidden');
+        });
+        document.getElementById('view-' + viewName).classList.remove('hidden');
+        
+        document.querySelectorAll('.nav-btn').forEach(el => {
+            el.classList.remove('bg-primary/10', 'text-primary');
+            el.classList.add('text-slate-500', 'dark:text-slate-400');
+        });
+        const activeBtn = document.getElementById('btn-' + viewName);
+        activeBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        activeBtn.classList.add('bg-primary/10', 'text-primary');
+    }
+
+    function setDirection(dir) {
+        direction = dir;
+        const btnJson = document.getElementById('btn-dir-json2lwon');
+        const btnLwon = document.getElementById('btn-dir-lwon2json');
+        
+        if (dir === 'json2lwon') {
+            btnJson.classList.add('bg-white', 'dark:bg-primary', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnJson.classList.remove('text-slate-500', 'hover:text-slate-700');
+            btnLwon.classList.remove('bg-white', 'dark:bg-primary', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnLwon.classList.add('text-slate-500', 'dark:text-slate-400');
+            document.getElementById('converterInput').placeholder = "// Paste JSON here...";
+        } else {
+            btnLwon.classList.add('bg-white', 'dark:bg-primary', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnLwon.classList.remove('text-slate-500', 'hover:text-slate-700');
+            btnJson.classList.remove('bg-white', 'dark:bg-primary', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnJson.classList.add('text-slate-500', 'dark:text-slate-400');
+            document.getElementById('converterInput').placeholder = "// Paste LWON here...";
+        }
+    }
+
+    function loadSample() {
+        if (direction === 'json2lwon') {
+            document.getElementById('converterInput').value = sampleJSON;
+        } else {
+            document.getElementById('converterInput').value = sampleLWON;
+        }
+    }
+
+    function clearEditors() {
+        document.getElementById('converterInput').value = '';
+        document.getElementById('converterOutput').value = '';
+        resetStats();
+    }
+
+    // Processing Logic
+    function convert() {
+        const input = document.getElementById('converterInput').value;
+        const statusEl = document.getElementById('statusBadge');
+        
+        try {
+            let output = '';
+            let originalSize = new Blob([input]).size;
+            let finalSize = 0;
+
+            if (direction === 'json2lwon') {
+                // JSON -> LWON
+                const data = JSON.parse(input);
+                if (!Array.isArray(data) || data.length === 0) throw new Error("JSON must be a non-empty array of objects");
+                
+                const schema = extractSchema(data[0]);
+                const schemaStr = schemaToString(schema);
+                const dataStr = dataToString(data, schema);
+                output = schemaStr + "\n\n" + dataStr;
+            } else {
+                // LWON -> JSON
+                const tokens = tokenize(input);
+                const { schemaTokens, dataTokens } = parseSplit(tokens);
+                const schema = parseSchema(schemaTokens);
+                const rawData = parseDataValue(dataTokens, { i: 0 });
+                const result = rawData.map(row => mapRow(row, schema));
+                output = JSON.stringify(result, null, 2);
+            }
+
+            document.getElementById('converterOutput').value = output;
+            
+            // Stats
+            finalSize = new Blob([output]).size;
+            updateStats(originalSize, finalSize, direction === 'json2lwon' ? finalSize : originalSize); // Compare relevant sizes
+            
+            // Status
+            statusEl.classList.remove('hidden', 'bg-red-100', 'text-red-600', 'dark:bg-red-500/10', 'dark:text-red-400', 'border-red-200');
+            statusEl.classList.add('bg-emerald-100', 'text-emerald-600', 'dark:bg-emerald-500/10', 'dark:text-emerald-400', 'border-emerald-200');
+            statusEl.innerText = "Success";
+
+        } catch (e) {
+            console.error(e);
+            statusEl.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-600');
+            statusEl.classList.add('bg-red-100', 'text-red-600', 'dark:bg-red-500/10', 'dark:text-red-400', 'border-red-200');
+            statusEl.innerText = "Error: " + e.message;
+        }
+    }
+
+    function updateStats(orig, current, lwonBytes) {
+        // Here we want to show savings of LWON vs JSON.
+        // If converting JSON -> LWON: Orig=JSON, Current=LWON.
+        // If converting LWON -> JSON: Orig=LWON, Current=JSON.
+        
+        let jsonSize = direction === 'json2lwon' ? orig : current;
+        let lwonSize = direction === 'json2lwon' ? current : orig;
+        
+        if (jsonSize === 0) jsonSize = 1; // avoid div by zero
+
+        const savings = Math.max(0, jsonSize - lwonSize);
+        const percent = ((savings / jsonSize) * 100).toFixed(1);
+
+        const origEl = document.getElementById('statOriginal');
+        const lwonEl = document.getElementById('statLwon');
+        if (origEl) origEl.innerText = `${jsonSize} bytes`;
+        if (lwonEl) lwonEl.innerText = `${lwonSize} bytes`;
+        
+        const ratioEl = document.getElementById('statRatio');
+        if (ratioEl) ratioEl.innerText = `${percent}% Savings`;
+
+        // Update bars
+        const lwonPercent = 100 - percent;
+        const barLwon = document.getElementById('barLwon');
+        const barSaving = document.getElementById('barSaving');
+        if (barLwon) barLwon.style.width = `${lwonPercent}%`;
+        if (barSaving) barSaving.style.width = `${percent}%`;
+    }
+    
+    function resetStats() {
+        const ids = ['statOriginal', 'statLwon', 'statRatio'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = id.includes('Ratio') ? '0% Saving' : '0 bytes';
+        });
+        const barLwon = document.getElementById('barLwon');
+        const barSaving = document.getElementById('barSaving');
+        if (barLwon) barLwon.style.width = '0%';
+        if (barSaving) barSaving.style.width = '0%';
+    }
+
+    function copyOutput() {
+        const copyText = document.getElementById("converterOutput");
+        copyText.select();
+        navigator.clipboard.writeText(copyText.value);
+    }
+
+    function validate() {
+        const input = document.getElementById('validatorInput').value;
+        const resEl = document.getElementById('validatorResult');
+        
+        try {
+            const tokens = tokenize(input);
+            const { schemaTokens, dataTokens } = parseSplit(tokens);
+            const schema = parseSchema(schemaTokens);
+            const rawData = parseDataValue(dataTokens, { i: 0 });
+            
+            if (!Array.isArray(rawData)) throw new Error("Data body root must be an array");
+            
+            resEl.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-700');
+            resEl.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+            resEl.innerHTML = `<strong>Valid LWON!</strong><br>Found ${rawData.length} records.<br>Schema fields: ${schema.length}`;
+        } catch(e) {
+            resEl.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+            resEl.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+            resEl.innerHTML = `<strong>Validation Failed:</strong> ${e.message}`;
+        }
+    }
+
+
+    // --- LWON LIBRARY (EMBEDDED) ---
+    // Tokenizer & Parser Logic
+    
+    function tokenize(input) {
+        const tokens = [];
+        let current = 0;
+        while (current < input.length) {
+            let char = input[current];
+            if (/\s/.test(char)) { current++; continue; }
+            if (char === '[' || char === ']') { tokens.push({ type: 'bracket', value: char }); current++; continue; }
+            if (char === '"') {
+                let value = ''; char = input[++current];
+                while (char !== '"' && current < input.length) {
+                    if (char === '\\' && input[current+1] === '"') { value += '"'; current+=2; char = input[current]; }
+                    else { value += char; char = input[++current]; }
+                }
+                current++; tokens.push({ type: 'string', value: value }); continue;
+            }
+            if (char === '{' && input[current+1] === '}') {
+                tokens.push({ type: 'null', value: null });
+                current += 2;
+                continue;
+            }
+            if (/[a-zA-Z0-9_\-\.\+:]/.test(char)) {
+                let value = '';
+                while (/[a-zA-Z0-9_\-\.\+:]/.test(char) && current < input.length) {
+                    if (char === '[' || char === ']') break;
+                    value += char; char = input[++current];
+                }
+                if (value === 'true') tokens.push({ type: 'boolean', value: true });
+                else if (value === 'false') tokens.push({ type: 'boolean', value: false });
+                else if (!isNaN(Number(value)) && value.trim() !== '') tokens.push({ type: 'number', value: Number(value) });
+                else tokens.push({ type: 'identifier', value: value });
+                continue;
+            }
+            current++;
+        }
+        return tokens;
+    }
+
+    function parseSplit(tokens) {
+        let splitIndex = -1;
+        let bracketDepth = 0;
+        for(let i=0; i<tokens.length; i++) {
+            if (tokens[i].type === 'bracket') {
+                if (tokens[i].value === '[') bracketDepth++;
+                else bracketDepth--;
+            }
+            // Data start heuristic: Top level bracket that contains another bracket or value immediately (not identifier of schema)
+            if (tokens[i].type === 'bracket' && tokens[i].value === '[' && bracketDepth === 1) {
+                let next = tokens[i+1];
+                // [[...]] -> Data
+                if (next && next.type === 'bracket' && next.value === '[') { splitIndex = i; break; }
+                // [ "val" ...] -> Data
+                if (next && next.type !== 'identifier') { splitIndex = i; break; }
+            }
+        }
+        if (splitIndex === -1) throw new Error("Could not find start of Data block.");
+        return { schemaTokens: tokens.slice(0, splitIndex), dataTokens: tokens.slice(splitIndex) };
+    }
+
+    function parseSchema(tokens) {
+        let i = 0;
+        function parseFields() {
+            const fields = [];
+            while(i < tokens.length) {
+                const t = tokens[i];
+                if (t.value === ']') return fields;
+                if (t.type === 'identifier' || t.type === 'string') {
+                    const key = t.value; i++;
+                    if (i < tokens.length && tokens[i].value === '[') {
+                        i++; // skip [
+                        const sub = parseFields(); i++; // skip ]
+                        fields.push({ key, type: 'object', fields: sub });
+                    } else {
+                        fields.push({ key, type: 'simple' });
+                    }
+                } else if (t.value === '[') {
+                    i++; // skip [
+                    const key = tokens[i].value; i++;
+                    if (i < tokens.length && tokens[i].value === '[') {
+                        // Array of objects: [key[sub]]
+                        i++; // skip [
+                        const sub = parseFields(); i++; // skip ]
+                        i++; // skip outer ]
+                        fields.push({ key, type: 'array_of_objects', fields: sub });
+                    } else {
+                        // Simple array: [key]
+                        i++; // skip ]
+                        fields.push({ key, type: 'simple_array' });
+                    }
+                } else {
+                    i++; // skip unknown
+                }
+            }
+            return fields;
+        }
+        return parseFields();
+    }
+
+    function parseDataValue(tokens, iRef) {
+        const t = tokens[iRef.i];
+        if (t.value === '[') {
+            iRef.i++;
+            const arr = [];
+            while (iRef.i < tokens.length && tokens[iRef.i].value !== ']') {
+                arr.push(parseDataValue(tokens, iRef));
+            }
+            iRef.i++; return arr;
+        } else {
+            iRef.i++; return t.value;
+        }
+    }
+
+    function mapRow(row, schemaFields) {
+        if (!Array.isArray(row)) return row;
+        const obj = {};
+        let r = 0;
+        for (let s = 0; s < schemaFields.length; s++) {
+            const field = schemaFields[s];
+            const val = row[r]; r++;
+            if (val === undefined) continue;
+            if (field.type === 'simple') obj[field.key] = val;
+            else if (field.type === 'simple_array') obj[field.key] = Array.isArray(val) ? val : [];
+            else if (field.type === 'object') obj[field.key] = Array.isArray(val) ? mapRow(val, field.fields) : val;
+            else if (field.type === 'array_of_objects') obj[field.key] = Array.isArray(val) ? val.map(v => mapRow(v, field.fields)) : [];
+        }
+        return obj;
+    }
+
+    function extractSchema(obj) {
+        const fields = [];
+        for (const key in obj) {
+            const val = obj[key];
+            if (Array.isArray(val)) {
+                if (val.length > 0 && typeof val[0] === 'object' && val[0] !== null) {
+                    fields.push({ key, type: 'array_of_objects', fields: extractSchema(val[0]) });
+                } else {
+                    fields.push({ key, type: 'simple_array' });
+                }
+            } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                fields.push({ key, type: 'object', fields: extractSchema(val) });
+            } else {
+                fields.push({ key, type: 'simple' });
+            }
+        }
+        return fields;
+    }
+    
+    function schemaToString(fields) {
+        return fields.map(f => {
+            if (f.type === 'simple') return f.key;
+            if (f.type === 'simple_array') return `[${f.key}]`;
+            if (f.type === 'object') return `${f.key}[${schemaToString(f.fields)}]`;
+            if (f.type === 'array_of_objects') return `[${f.key}[${schemaToString(f.fields)}]]`;
+        }).join(' ');
+    }
+    
+    function dataToString(data, schema) {
+        function serialize(v) { 
+            if (v === null || v === undefined) return '{}';
+            if (Array.isArray(v)) {
+                if (v.length === 0) return '{}';
+                return `[${v.map(item => serialize(item)).join(' ')}]`;
+            }
+            if (typeof v === 'string') return `"${v}"`; 
+            if (typeof v === 'boolean') return v ? 'true' : 'false';
+            return v; 
+        }
+        function rowStr(row, fields) {
+            return fields.map(f => {
+                const val = row ? row[f.key] : undefined;
+                if (f.type === 'simple') return serialize(val);
+                if (f.type === 'simple_array') return serialize(val);
+                if (f.type === 'object') {
+                    if (val === null || val === undefined || Object.keys(val).length === 0) return '{}';
+                    return `[${rowStr(val, f.fields)}]`;
+                }
+                if (f.type === 'array_of_objects') {
+                    if (!val || !Array.isArray(val) || val.length === 0) return '{}';
+                    return `[${val.map(v => `[${rowStr(v, f.fields)}]`).join(' ')}]`;
+                }
+            }).join(' ');
+        }
+        return `[\n` + data.map(d => `  [ ${rowStr(d, schema)} ]`).join('\n') + `\n]`;
+    }
+
+    // Init
+    setDirection('json2lwon');
+</script>
+</body>
+</html>
