@@ -1,0 +1,161 @@
+---
+import Base from '../layouts/Base.astro';
+import bench from '../data/bench.json';
+---
+<Base title="Playground" description="Convert JSON to LWON and back in your browser, and see how many tokens and bytes LWON saves.">
+  <div class="container page">
+    <header class="page-head">
+      <h1>Playground</h1>
+      <p class="lead">Edit either side and the other updates as you type. Everything runs in your browser; nothing is uploaded.</p>
+    </header>
+
+    <div class="toolbar" role="group" aria-label="Playground options">
+      <label class="field">
+        <span>Sample</span>
+        <select id="sample">
+          <option value="">Choose a sample…</option>
+          <option value="starter">Orders API response</option>
+          {bench.results.map((r) => <option value={r.name}>{r.shape}</option>)}
+        </select>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="bare" checked />
+        <span>Unquoted strings</span>
+      </label>
+      <span class="badge" id="roundtrip" data-ok="true" role="status">Round trip verified</span>
+    </div>
+
+    <section class="stats" aria-label="Size comparison">
+      <div class="stat-grid">
+        <div class="stat">
+          <span class="stat-label">JSON (minified)</span>
+          <span class="stat-value"><span data-stat="json-tokens">…</span> <small>tokens</small></span>
+          <span class="stat-sub" data-stat="json-bytes"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">LWON</span>
+          <span class="stat-value"><span data-stat="lwon-tokens">…</span> <small>tokens</small></span>
+          <span class="stat-sub" data-stat="lwon-bytes"></span>
+        </div>
+        <div class="stat highlight">
+          <span class="stat-label">Change in tokens</span>
+          <span class="stat-value" data-stat="tokens-saved">…</span>
+          <span class="stat-sub">Bytes: <span data-stat="bytes-saved"></span></span>
+        </div>
+      </div>
+      <div class="bars" aria-hidden="true">
+        <div class="bar-row"><span>JSON</span><span class="bar json" id="bar-json"></span></div>
+        <div class="bar-row"><span>LWON</span><span class="bar lwon" id="bar-lwon"></span></div>
+      </div>
+      <p class="note">Tokens counted with the o200k tokenizer in your browser. Other models' tokenizers give similar ratios.</p>
+    </section>
+
+    <div class="panes">
+      <section class="pane" aria-labelledby="json-label">
+        <div class="pane-head">
+          <label id="json-label" for="json-input">JSON</label>
+          <div class="pane-actions">
+            <button type="button" class="btn btn-ghost btn-sm" id="format-json">Format</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-copy="json">Copy</button>
+          </div>
+        </div>
+        <textarea id="json-input" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-describedby="json-error"></textarea>
+        <p class="error" id="json-error" role="alert" hidden></p>
+      </section>
+
+      <section class="pane" aria-labelledby="lwon-label">
+        <div class="pane-head">
+          <label id="lwon-label" for="lwon-input">LWON</label>
+          <div class="pane-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-copy="lwon">Copy</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-copy="primer">Copy with AI primer</button>
+          </div>
+        </div>
+        <textarea id="lwon-input" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-describedby="lwon-error"></textarea>
+        <p class="error" id="lwon-error" role="alert" hidden></p>
+      </section>
+    </div>
+
+    <p class="visually-hidden" id="announcer" aria-live="polite"></p>
+  </div>
+</Base>
+
+<script>
+  import '../scripts/playground.ts';
+</script>
+
+<style>
+  .page { padding-top: clamp(32px, 5vw, 56px); padding-bottom: 72px; }
+  .page-head h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
+  .page-head .lead { margin-bottom: 28px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+  .field { display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; flex: 0 1 380px; min-width: 0; }
+  select {
+    font: inherit; font-size: 0.9rem; color: var(--text);
+    min-height: 40px; padding: 0 36px 0 12px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface);
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px; background-repeat: no-repeat;
+    width: 100%; min-width: 0;
+  }
+  .check { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; min-height: 40px; cursor: pointer; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .badge {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+    background: var(--ok-soft); color: var(--ok);
+  }
+  .badge::before { content: '✓'; }
+  .badge[data-ok='false'] { background: var(--danger-soft); color: var(--danger); }
+  .badge[data-ok='false']::before { content: '!'; }
+
+  .stats { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin-bottom: 16px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .stat-label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat-value small { font-size: 0.85rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .stat-sub { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stat.highlight .stat-value { color: var(--ok); }
+  .bars { display: grid; gap: 6px; margin-top: 16px; }
+  .bar-row { display: grid; grid-template-columns: 3.5em 1fr; align-items: center; gap: 10px; font-size: 0.78rem; color: var(--muted); }
+  .bar { display: block; height: 10px; border-radius: 0 4px 4px 0; width: calc(100% * var(--f, 0)); min-width: 2px; }
+  .bar.json { background: var(--series-json); }
+  .bar.lwon { background: var(--series-lwon); }
+  @media (prefers-reduced-motion: no-preference) {
+    .bar { transition: width 0.6s var(--ease); }
+  }
+  .note { margin: 12px 0 0; font-size: 0.8rem; color: var(--muted); }
+
+  .panes { display: grid; gap: 16px; }
+  @media (min-width: 900px) { .panes { grid-template-columns: 1fr 1fr; } }
+  .pane { display: flex; flex-direction: column; min-width: 0; }
+  .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pane-head label { font-weight: 700; font-size: 0.95rem; }
+  .pane-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  textarea {
+    width: 100%; min-height: clamp(320px, 55vh, 640px); resize: vertical;
+    font-family: var(--mono); font-size: 0.85rem; line-height: 1.6; tab-size: 2;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: opacity 0.2s, border-color 0.2s;
+  }
+  textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  textarea[aria-invalid='true'] { border-color: var(--danger); }
+  textarea.is-stale { opacity: 0.55; }
+  .error {
+    margin: 8px 0 0; padding: 10px 12px; border-radius: var(--radius-sm);
+    background: var(--danger-soft); color: var(--danger); font-size: 0.85rem; font-family: var(--mono);
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 600px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .stat.highlight { grid-column: span 2; }
+    .badge { margin-left: 0; }
+  }
+</style>

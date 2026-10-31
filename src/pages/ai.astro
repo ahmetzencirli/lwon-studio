@@ -1,0 +1,95 @@
+---
+import { Code as Shiki } from 'astro:components';
+import { encode as countTokens } from 'gpt-tokenizer';
+import Prose from '../layouts/Prose.astro';
+import Code from '../components/Code.astro';
+import { PRIMER } from '../lib/lwon/index.ts';
+import bench from '../data/bench.json';
+
+const primerTokens = countTokens(PRIMER).length;
+const savings = bench.results.map((r) => 1 - r.tokens.lwon / r.tokens.min);
+const typical = savings.sort((a, b) => a - b)[Math.floor(savings.length / 2)];
+const breakEven = Math.round(primerTokens / typical / 50) * 50;
+const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
+
+const headings = [
+  { depth: 2, slug: 'where', text: 'Where the savings come from' },
+  { depth: 2, slug: 'before', text: 'Convert before the model reads it' },
+  { depth: 2, slug: 'primer', text: 'Tell the model about the format' },
+  { depth: 2, slug: 'writing', text: 'Reading, not writing' },
+  { depth: 2, slug: 'mcp', text: 'MCP servers' },
+  { depth: 2, slug: 'accuracy', text: 'Accuracy' },
+];
+---
+<Prose title="For AI" description="How to use LWON to cut the tokens that tool results, API responses and retrieved records cost in LLM prompts." headings={headings}>
+  <h1>LWON for AI</h1>
+  <p class="lead">
+    Models read structured data all day: tool results, API responses, database rows, retrieved
+    documents. LWON lets them read the same data for fewer tokens, which means lower cost, lower
+    latency and more room in the context window.
+  </p>
+
+  <h2 id="where">Where the savings come from</h2>
+  <p>
+    In a JSON array of 100 records, every key is written 100 times, wrapped in quotes and followed by a
+    colon. LWON writes each key once in a header and lists only the values after it. The more records
+    and the deeper the nesting, the bigger the gap. See the <a href="/benchmarks">benchmarks</a>.
+  </p>
+
+  <h2 id="before">Convert before the model reads it</h2>
+  <p>
+    The tokens are saved only if the model never sees the JSON. Encode in your own code, where the data
+    arrives: the tool handler, the API client, the retrieval step.
+  </p>
+  <Shiki lang="ts" themes={themes} code={`import { encode, PRIMER } from 'lwon';
+
+const rows = await db.query('select id, name, plan, mrr from accounts limit 200');
+
+const response = await client.messages.create({
+  model: 'claude-sonnet-5-5',
+  system: PRIMER,                     // explain the format once
+  messages: [{ role: 'user', content: \`Which accounts churned?\\n\\n\${encode(rows)}\` }],
+});`} />
+  <p>
+    Giving the model an <code>encode</code> tool does <strong>not</strong> help: to call it, the model
+    would first have to read the JSON, so the tokens are already spent.
+  </p>
+
+  <h2 id="primer">Tell the model about the format</h2>
+  <p>
+    Models do not know LWON yet, so send this primer once per conversation, ideally in the system prompt
+    where prompt caching makes it nearly free after the first call. It is {primerTokens} tokens long and
+    is exported by the library as <code>PRIMER</code>.
+  </p>
+  <Code code={PRIMER} lang="text" label="Primer" />
+  <p>
+    At the typical saving in our benchmarks ({Math.round(typical * 100)}%), the primer pays for itself once
+    the data would take about {breakEven} tokens as minified JSON. Below that, send JSON. With a cached
+    system prompt the threshold is much lower.
+  </p>
+
+  <h2 id="writing">Reading, not writing</h2>
+  <p>
+    Start by using LWON for data the model <em>reads</em>. Asking a model to <em>write</em> LWON saves
+    output tokens, but positional formats are easy to get subtly wrong. If you do, always check the
+    output with <code>decode</code> and retry on an error, which includes the line and column.
+  </p>
+
+  <h2 id="mcp">MCP servers</h2>
+  <p>
+    Many MCP servers return large JSON tool results. A proxy that sits between the client and any MCP
+    server and converts those results to LWON is planned, so existing servers save tokens without code
+    changes. Follow progress on <a href="https://github.com/ahmetzencirli/lwon">GitHub</a>.
+  </p>
+
+  <h2 id="accuracy">Accuracy</h2>
+  <p>
+    Fewer tokens only help if the model still understands the data. We are measuring this directly by
+    asking models the same questions about the same data in JSON, LWON and TOON, and will publish the
+    results here. Until then, test LWON on your own prompts before switching.
+  </p>
+</Prose>
+
+<style>
+  .lead { margin-bottom: 1.5em; }
+</style>

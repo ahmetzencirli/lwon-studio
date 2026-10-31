@@ -1,0 +1,31 @@
+---
+import Logo from './Logo.astro';
+---
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="brand"><Logo size={24} /><span>LWON</span></a>
+      <p class="muted">Lightweight Object Notation. Created by Ahmet Zencirli. Apache-2.0.</p>
+    </div>
+    <nav aria-label="Footer">
+      <ul>
+        <li><a href="/playground">Playground</a></li>
+        <li><a href="/docs">Docs</a></li>
+        <li><a href="/spec">Specification</a></li>
+        <li><a href="/ai">For AI</a></li>
+        <li><a href="/benchmarks">Benchmarks</a></li>
+        <li><a href="https://github.com/ahmetzencirli/lwon">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .footer { border-top: 1px solid var(--border); padding: 40px 0 56px; margin-top: 0; }
+  .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; }
+  .brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 700; }
+  .footer-brand p { margin: 10px 0 0; font-size: 0.9rem; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  ul a { color: var(--text-2); text-decoration: none; font-size: 0.92rem; display: inline-block; padding: 4px 0; }
+  ul a:hover { color: var(--text); text-decoration: underline; }
+</style>

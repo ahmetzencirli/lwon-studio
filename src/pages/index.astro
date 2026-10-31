@@ -1,0 +1,229 @@
+---
+import Base from '../layouts/Base.astro';
+import HeroDemo from '../components/HeroDemo.astro';
+import BenchChart from '../components/BenchChart.astro';
+import Code from '../components/Code.astro';
+import { encode } from '../lib/lwon/index.ts';
+import bench from '../data/bench.json';
+
+const savings = bench.results.map((r) => Math.round((1 - r.tokens.lwon / r.tokens.min) * 100));
+const range = `${Math.min(...savings)}–${Math.max(...savings)}%`;
+
+const ideas = [
+  {
+    title: 'Keys once, values by position',
+    body: 'A header names the fields. Each row lists only values, in header order. Words without spaces need no quotes.',
+    code: encode([{ id: 1, name: 'Ada', tags: ['math', 'code'] }, { id: 2, name: 'Linus', tags: [] }]),
+  },
+  {
+    title: 'Nesting stays compact',
+    body: 'Objects and lists of objects get their own field lists inside the header, so deep data is still written once.',
+    code: encode({ orders: [{ id: 'A-1', customer: { name: 'Ann', city: 'Izmir' }, items: [{ sku: 'K1', qty: 2 }] }] }),
+  },
+  {
+    title: 'Trees refer to themselves',
+    body: '@ reuses an enclosing field list. Menus, file trees and comment threads need one short header at any depth.',
+    code: encode([{ title: 'Docs', children: [{ title: 'Spec', children: [] }, { title: 'API', children: [] }] }]),
+  },
+  {
+    title: 'Anything else stays JSON',
+    body: 'A value that does not fit the header is written as plain JSON in its slot. Nothing is ever dropped.',
+    code: encode([{ id: 1, data: 'text' }, { id: 2, data: [1, { deep: true }] }]),
+  },
+];
+---
+<Base title="LWON" description={`LWON is a lossless, two-way notation for JSON that writes keys once. ${range} fewer tokens than minified JSON for LLM prompts and APIs.`}>
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Lightweight Object Notation</span>
+        <h1>JSON, with the keys written&nbsp;once.</h1>
+        <p class="lead">
+          LWON writes the shape of your data once and the values by position. It converts any JSON value
+          and back without loss, and uses <strong>{range} fewer tokens</strong> than minified JSON on typical
+          API and tool data.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="/playground">Try it with your JSON</a>
+          <a class="btn btn-ghost" href="/spec">Read the spec</a>
+        </div>
+        <ul class="facts" aria-label="Key facts">
+          <li>Any JSON value</li>
+          <li>Exact round trip</li>
+          <li>No dependencies</li>
+        </ul>
+      </div>
+      <div class="hero-demo">
+        <HeroDemo />
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="how">
+    <div class="container">
+      <span class="eyebrow">How it works</span>
+      <h2 id="how">Four rules cover every JSON value.</h2>
+      <p class="lead">The examples below are real encoder output.</p>
+      <div class="grid grid-2 ideas">
+        {ideas.map((idea, i) => (
+          <article class="card idea" data-reveal style={`transition-delay:${i * 70}ms`}>
+            <h3>{idea.title}</h3>
+            <p class="muted">{idea.body}</p>
+            <Code code={idea.code} label="LWON" />
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="bench">
+    <div class="container">
+      <span class="eyebrow">Benchmarks</span>
+      <h2 id="bench">Fewer tokens on the data you actually send.</h2>
+      <p class="lead">
+        Six realistic datasets, measured against minified JSON, the fair baseline, and against TOON,
+        another format built for LLMs. LWON's lead grows with nesting.
+      </p>
+      <BenchChart />
+      <p class="more"><a href="/benchmarks">Method and full results →</a></p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="lossless">
+    <div class="container">
+      <span class="eyebrow">Lossless</span>
+      <h2 id="lossless">Every value comes back exactly.</h2>
+      <p class="lead">
+        Nulls, empty arrays, missing keys, odd key names and fields that change type from row to row
+        all survive the trip. The reference library is tested against a shared conformance suite and
+        a fuzzer that generates hostile JSON.
+      </p>
+      <div class="stats">
+        <div class="stat card" data-reveal><span class="stat-num">100,000</span><span class="muted">fuzzed round trips, all exact</span></div>
+        <div class="stat card" data-reveal><span class="stat-num">112</span><span class="muted">conformance and unit tests</span></div>
+        <div class="stat card" data-reveal><span class="stat-num">0</span><span class="muted">runtime dependencies</span></div>
+      </div>
+      <div class="table-wrap empties">
+        <table class="table">
+          <caption class="visually-hidden">How LWON writes empty and missing values</caption>
+          <thead><tr><th scope="col">JSON</th><th scope="col">LWON</th><th scope="col">Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>null</code></td><td><code>null</code></td><td>The key is there; its value is null.</td></tr>
+            <tr><td><code>[]</code> / <code>&#123;&#125;</code></td><td><code>[]</code> / <code>&#123;&#125;</code></td><td>Empty array, empty object.</td></tr>
+            <tr><td>key missing</td><td><code>~</code></td><td>The key is absent. At the end of a row it can be left out.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ai">
+    <div class="container ai-grid">
+      <div>
+        <span class="eyebrow">For AI</span>
+        <h2 id="ai">Convert before the model reads it.</h2>
+        <p class="lead">
+          Tool results, API responses and retrieved records are mostly repeated keys and punctuation.
+          Encode them as LWON in your tool layer and send a 220-token primer once, so the model reads the
+          same data for fewer tokens.
+        </p>
+        <a class="btn btn-ghost" href="/ai">Read the AI guide</a>
+      </div>
+      <ol class="flow" data-reveal aria-label="Where LWON fits">
+        <li class="flow-step"><span class="flow-kicker">1 · Your tool or API</span><code>JSON</code></li>
+        <li class="flow-step accent"><span class="flow-kicker">2 · In your code</span><code>lwon.encode(data)</code></li>
+        <li class="flow-step"><span class="flow-kicker">3 · The prompt</span><code>PRIMER + LWON</code></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section cta">
+    <div class="container cta-inner" data-reveal>
+      <h2>See what LWON does to your data.</h2>
+      <p class="lead">Paste any JSON. The playground converts both ways and counts the tokens in your browser.</p>
+      <a class="btn btn-primary" href="/playground">Open the playground</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero { padding: clamp(40px, 7vw, 96px) 0 clamp(56px, 8vw, 104px); position: relative; overflow: hidden; }
+  .hero::before {
+    content: '';
+    position: absolute; inset: -40% -10% auto auto;
+    width: 70vw; height: 70vw; max-width: 900px; max-height: 900px;
+    background: radial-gradient(closest-side, var(--accent-soft), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-grid { position: relative; display: grid; gap: clamp(32px, 5vw, 64px); align-items: center; }
+  @media (min-width: 980px) { .hero-grid { grid-template-columns: 1.05fr 1fr; } }
+  .hero-copy h1 { margin-bottom: 20px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 24px; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 20px; list-style: none; padding: 0; margin: 0; color: var(--muted); font-size: 0.9rem; }
+  .facts li { display: inline-flex; align-items: center; gap: 8px; }
+  .facts li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .hero-demo { min-width: 0; }
+
+  .ideas { margin-top: 36px; }
+  .idea h3 { margin-bottom: 6px; }
+  .idea p { font-size: 0.95rem; }
+
+  .more { margin: 20px 0 0; font-weight: 600; }
+
+  .stats { display: grid; gap: 16px; margin: 32px 0 24px; }
+  @media (min-width: 700px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat-num { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .empties { max-width: 760px; }
+
+  .ai-grid { display: grid; gap: 40px; align-items: center; }
+  @media (min-width: 900px) { .ai-grid { grid-template-columns: 1fr 1fr; } }
+  .flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; position: relative; }
+  .flow::before {
+    content: ''; position: absolute; left: 28px; top: 20px; bottom: 20px; width: 2px;
+    background: repeating-linear-gradient(to bottom, var(--border-strong) 0 6px, transparent 6px 12px);
+  }
+  .flow-step {
+    position: relative;
+    display: flex; flex-direction: column; gap: 6px;
+    margin-left: 56px; padding: 16px 18px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .flow-step::before {
+    content: ''; position: absolute; left: -35px; top: 50%; width: 12px; height: 12px; margin-top: -6px;
+    border-radius: 50%; background: var(--surface); border: 2px solid var(--border-strong);
+  }
+  .flow-step.accent { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .flow-step.accent::before { background: var(--accent); border-color: var(--accent); }
+  .flow-kicker { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .flow-step code { font-size: 1rem; background: none; border: 0; padding: 0; color: var(--text); }
+
+  /* A pulse travels down the pipeline. */
+  @media (prefers-reduced-motion: no-preference) {
+    .flow::after {
+      content: ''; position: absolute; left: 25px; top: 20px; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
+      animation: travel 3.2s var(--ease) infinite;
+    }
+    @keyframes travel {
+      0% { transform: translateY(0); opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translateY(calc(var(--flow-h, 220px))); opacity: 0; }
+    }
+  }
+
+  .cta { text-align: center; }
+  .cta-inner { display: flex; flex-direction: column; align-items: center; }
+  .cta .lead { margin-inline: auto; margin-bottom: 28px; }
+</style>
+
+<script>
+  // The travelling pulse needs the real height of the pipeline.
+  const flow = document.querySelector<HTMLElement>('.flow');
+  if (flow) {
+    const set = () => flow.style.setProperty('--flow-h', `${flow.offsetHeight - 44}px`);
+    set();
+    new ResizeObserver(set).observe(flow);
+  }
+</script>

@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import Code from '../components/Code.astro';
+---
+<Base title="Page not found" description="This page does not exist.">
+  <div class="container nf">
+    <Code code={'{page}\n[~]'} label="LWON" />
+    <h1>Page not found</h1>
+    <p class="lead">The key is absent. Try the <a href="/">home page</a> or the <a href="/playground">playground</a>.</p>
+  </div>
+</Base>
+
+<style>
+  .nf { padding-top: 96px; padding-bottom: 120px; max-width: 640px; }
+  .nf :global(.code-block) { max-width: 220px; margin-bottom: 28px; }
+</style>

@@ -1,0 +1,7 @@
+---
+import Prose from '../layouts/Prose.astro';
+import { Content, getHeadings } from '../content/spec.md';
+---
+<Prose title="Specification" description="The LWON 1.0 specification: document structure, header, body, rules, grammar and encoder guidance." headings={getHeadings()}>
+  <Content />
+</Prose>

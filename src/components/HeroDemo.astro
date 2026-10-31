@@ -1,0 +1,279 @@
+---
+import { encode as countTokens } from 'gpt-tokenizer';
+import { encode } from '../lib/lwon/index.ts';
+
+// Each token: text, highlight class, and an id shared by the JSON and LWON views
+// when it is "the same" token in both (keys of the first row, every value).
+type Tok = { text: string; cls: string; id?: string; dup?: boolean };
+type Line = Tok[];
+
+const rows = [
+  { id: 1, name: 'Ada', role: 'admin' },
+  { id: 2, name: 'Linus', role: 'dev' },
+  { id: 3, name: 'Grace', role: 'dev' },
+];
+const keys = Object.keys(rows[0]) as (keyof (typeof rows)[0])[];
+const valueCls = (v: unknown) => (typeof v === 'number' ? 'num' : 'str');
+
+const jsonLines: Line[] = [[{ text: '[', cls: 'punct' }]];
+rows.forEach((row, i) => {
+  const line: Line = [{ text: '  ', cls: '' }, { text: '{', cls: 'punct' }];
+  keys.forEach((k, j) => {
+    line.push({ text: `"${k}"`, cls: 'key', id: i === 0 ? `k-${k}` : undefined, dup: i > 0 });
+    line.push({ text: ':', cls: 'punct' });
+    line.push({ text: JSON.stringify(row[k]), cls: valueCls(row[k]), id: `v-${i}-${k}` });
+    if (j < keys.length - 1) line.push({ text: ',', cls: 'punct' });
+  });
+  line.push({ text: i < rows.length - 1 ? '},' : '}', cls: 'punct' });
+  jsonLines.push(line);
+});
+jsonLines.push([{ text: ']', cls: 'punct' }]);
+
+const lwonLines: Line[] = [keys.flatMap((k, j) => [
+  ...(j ? [{ text: ' ', cls: '' }] : []),
+  { text: k, cls: 'key', id: `k-${k}` },
+]), [{ text: '[', cls: 'punct' }]];
+rows.forEach((row, i) => {
+  const line: Line = [{ text: '[', cls: 'punct' }];
+  keys.forEach((k, j) => {
+    if (j) line.push({ text: ' ', cls: '' });
+    line.push({ text: String(row[k]), cls: valueCls(row[k]), id: `v-${i}-${k}` });
+  });
+  line.push({ text: ']', cls: 'punct' });
+  lwonLines.push(line);
+});
+lwonLines.push([{ text: ']', cls: 'punct' }]);
+
+const text = (lines: Line[]) => lines.map((l) => l.map((t) => t.text).join('')).join('\n');
+const jsonText = text(jsonLines);
+const lwonText = text(lwonLines);
+if (lwonText !== encode(rows)) throw new Error('Hero LWON does not match the encoder output');
+if (JSON.stringify(JSON.parse(jsonText)) !== JSON.stringify(rows)) throw new Error('Hero JSON is wrong');
+
+const jsonTokens = countTokens(jsonText).length;
+const lwonTokens = countTokens(lwonText).length;
+const saved = Math.round((1 - lwonTokens / jsonTokens) * 100);
+---
+<figure class="demo" data-demo data-json-tokens={jsonTokens} data-lwon-tokens={lwonTokens}>
+  <div class="demo-bar">
+    <div class="demo-tabs" role="group" aria-label="Format shown">
+      <button type="button" data-show="json" aria-pressed="true">JSON</button>
+      <button type="button" data-show="lwon" aria-pressed="false">LWON</button>
+    </div>
+    <p class="demo-count">
+      <span class="count-num" data-count>{jsonTokens}</span> tokens
+      <span class="count-delta" data-delta hidden>−{saved}%</span>
+    </p>
+    <button type="button" class="icon-btn demo-play" data-play aria-label="Play animation" hidden>
+      <svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg class="i-play" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+    </button>
+  </div>
+  <div class="demo-stage">
+    {[['json', jsonLines], ['lwon', lwonLines]].map(([view, lines]) => (
+      <pre data-view={view} class:list={['demo-code', { 'is-active': view === 'json' }]}><code>{(lines as Line[]).map((line, n) => (
+        <>{n ? '\n' : ''}{line.map((t) => t.cls
+          ? <span class={`t tk-${t.cls}`} data-id={t.id} data-dup={t.dup ? '' : undefined}>{t.text}</span>
+          : t.text)}</>
+      ))}</code></pre>
+    ))}
+  </div>
+  <figcaption>
+    The same three records. LWON names the fields once and lists the values by position,
+    so it spends {saved}% fewer tokens ({jsonTokens} → {lwonTokens}, o200k tokenizer).
+  </figcaption>
+</figure>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const EASE = 'cubic-bezier(0.2, 0.7, 0.2, 1)';
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  for (const demo of document.querySelectorAll<HTMLElement>('[data-demo]')) {
+    const views = {
+      json: demo.querySelector<HTMLElement>('[data-view="json"]')!,
+      lwon: demo.querySelector<HTMLElement>('[data-view="lwon"]')!,
+    };
+    const tabs = [...demo.querySelectorAll<HTMLButtonElement>('[data-show]')];
+    const countEl = demo.querySelector<HTMLElement>('[data-count]')!;
+    const deltaEl = demo.querySelector<HTMLElement>('[data-delta]')!;
+    const playBtn = demo.querySelector<HTMLButtonElement>('[data-play]')!;
+    const tokens = { json: Number(demo.dataset.jsonTokens), lwon: Number(demo.dataset.lwonTokens) };
+
+    let state: 'json' | 'lwon' = 'json';
+    let busy = false;
+    let playing = false;
+    let visible = false;
+    let loopId = 0;
+
+    const setActive = (view: 'json' | 'lwon') => {
+      state = view;
+      // The inactive view is visibility: hidden, which also hides it from assistive tech.
+      for (const [k, el] of Object.entries(views)) el.classList.toggle('is-active', k === view);
+      tabs.forEach((t) => t.setAttribute('aria-pressed', String(t.dataset.show === view)));
+      deltaEl.hidden = view === 'json';
+    };
+
+    const animateCount = (from: number, to: number, ms: number) => {
+      const start = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - start) / ms);
+        const e = 1 - Math.pow(1 - p, 3);
+        countEl.textContent = String(Math.round(from + (to - from) * e));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    const go = async (target: 'json' | 'lwon', animate: boolean) => {
+      if (busy || target === state) return;
+      if (!animate || reduce.matches) {
+        setActive(target);
+        countEl.textContent = String(tokens[target]);
+        return;
+      }
+      busy = true;
+      const from = views[state];
+      const to = views[target];
+
+      // Phase 1: point at the keys JSON repeats in every row.
+      if (target === 'lwon') {
+        from.classList.add('show-dups');
+        await sleep(700);
+      }
+
+      // Phase 2: shared tokens fly from their old spots; the rest fade.
+      const fromRects = new Map<string, DOMRect>();
+      from.querySelectorAll<HTMLElement>('[data-id]').forEach((el) => fromRects.set(el.dataset.id!, el.getBoundingClientRect()));
+      to.classList.add('is-entering');
+      const anims: Animation[] = [];
+      let i = 0;
+      to.querySelectorAll<HTMLElement>('.t').forEach((el) => {
+        const r = el.dataset.id ? fromRects.get(el.dataset.id) : undefined;
+        if (r) {
+          const now = el.getBoundingClientRect();
+          anims.push(el.animate(
+            [{ transform: `translate(${r.left - now.left}px, ${r.top - now.top}px)` }, { transform: 'none' }],
+            { duration: 820, easing: EASE, delay: i++ * 14, fill: 'backwards' },
+          ));
+        } else {
+          anims.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, delay: 520, easing: 'ease-out', fill: 'backwards' }));
+        }
+      });
+      from.querySelectorAll<HTMLElement>('.t').forEach((el) => {
+        if (el.dataset.id) el.style.opacity = '0';
+        else anims.push(el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing: 'ease-in', fill: 'forwards' }));
+      });
+      animateCount(tokens[state], tokens[target], 900);
+      setActive(target);
+      to.classList.add('is-active');
+      from.classList.add('is-leaving');
+
+      await Promise.all(anims.map((a) => a.finished.catch(() => {})));
+      from.classList.remove('is-leaving', 'show-dups');
+      to.classList.remove('is-entering');
+      from.querySelectorAll<HTMLElement>('.t').forEach((el) => {
+        el.style.opacity = '';
+        el.getAnimations().forEach((a) => a.cancel());
+      });
+      busy = false;
+    };
+
+    const loop = async (id: number) => {
+      await sleep(state === 'json' ? 1600 : 2800);
+      while (playing && visible && id === loopId) {
+        await go(state === 'json' ? 'lwon' : 'json', true);
+        await sleep(state === 'json' ? 2200 : 3400);
+      }
+    };
+    const updatePlaying = () => {
+      playBtn.setAttribute('aria-label', playing ? 'Pause animation' : 'Play animation');
+      playBtn.classList.toggle('is-playing', playing);
+      if (playing && visible) loop(++loopId);
+      else loopId++;
+    };
+
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      playing = false;
+      updatePlaying();
+      go(t.dataset.show as 'json' | 'lwon', !reduce.matches);
+    }));
+    playBtn.addEventListener('click', () => {
+      playing = !playing;
+      updatePlaying();
+    });
+
+    if (!reduce.matches) {
+      playBtn.hidden = false;
+      playing = true;
+      new IntersectionObserver(([e]) => {
+        visible = e.isIntersecting && document.visibilityState === 'visible';
+        updatePlaying();
+      }, { threshold: 0.4 }).observe(demo);
+      document.addEventListener('visibilitychange', () => {
+        visible = document.visibilityState === 'visible';
+        updatePlaying();
+      });
+    }
+    updatePlaying();
+  }
+</script>
+
+<style>
+  .demo {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .demo-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 10px 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .demo-tabs { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
+  .demo-tabs button {
+    font: inherit; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em;
+    min-height: 30px; padding: 0 12px; border-radius: 999px; border: 0;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  .demo-tabs button[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); }
+  .demo-count { margin: 0 0 0 auto; font-size: 0.85rem; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .count-num { font-weight: 700; color: var(--text); font-family: var(--mono); }
+  .count-delta {
+    margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+    background: var(--ok-soft); color: var(--ok); font-weight: 700; font-size: 0.78rem;
+  }
+  .demo-play .i-play { display: block; }
+  .demo-play .i-pause { display: none; }
+  .demo-play.is-playing .i-play { display: none; }
+  .demo-play.is-playing .i-pause { display: block; }
+
+  .demo-stage { display: grid; padding: 20px 22px 22px; min-height: 13.5em; }
+  .demo-code {
+    grid-area: 1 / 1;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: clamp(0.74rem, 2.6vw, 0.95rem);
+    line-height: 1.75;
+    visibility: hidden;
+    overflow: visible;
+  }
+  .demo-code.is-active, .demo-code.is-leaving { visibility: visible; }
+  .demo-code :global(.t) { display: inline-block; white-space: pre; transition: color 0.4s, text-decoration-color 0.4s; }
+  .show-dups :global([data-dup]) {
+    color: var(--danger);
+    text-decoration: line-through 2px;
+    text-decoration-color: var(--danger);
+  }
+  figcaption {
+    padding: 12px 18px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+</style>

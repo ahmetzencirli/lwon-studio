@@ -1,0 +1,91 @@
+---
+import Prose from '../layouts/Prose.astro';
+import BenchChart from '../components/BenchChart.astro';
+import bench from '../data/bench.json';
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+const pct = (n: number, base: number) => {
+  const d = Math.round((n / base - 1) * 100);
+  return d === 0 ? '±0%' : d > 0 ? `+${d}%` : `−${-d}%`;
+};
+const headings = [
+  { depth: 2, slug: 'results', text: 'Results' },
+  { depth: 2, slug: 'method', text: 'Method' },
+  { depth: 2, slug: 'limits', text: 'Limits' },
+  { depth: 2, slug: 'reproduce', text: 'Reproduce' },
+];
+---
+<Prose title="Benchmarks" description="Token counts for JSON, TOON and LWON on six realistic datasets, with method and limits." headings={headings}>
+  <h1>Benchmarks</h1>
+  <p class="lead">
+    How many tokens the same data costs as JSON, TOON and LWON. Every LWON result is decoded again and
+    checked against the original before it is counted.
+  </p>
+  <div class="wide"><BenchChart /></div>
+
+  <h2 id="results">Results</h2>
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Tokens per format and dataset</caption>
+      <thead>
+        <tr>
+          <th scope="col">Dataset</th>
+          <th scope="col" class="num">JSON indented</th>
+          <th scope="col" class="num">JSON minified</th>
+          <th scope="col" class="num">TOON</th>
+          <th scope="col" class="num">LWON</th>
+          <th scope="col" class="num">LWON vs JSON</th>
+          <th scope="col" class="num">LWON vs TOON</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bench.results.map((r) => (
+          <tr>
+            <th scope="row"><span class="ds">{r.name}</span><span class="muted">{r.shape}</span></th>
+            <td class="num">{fmt(r.tokens.pretty)}</td>
+            <td class="num">{fmt(r.tokens.min)}</td>
+            <td class="num">{fmt(r.tokens.toon)}</td>
+            <td class="num"><strong>{fmt(r.tokens.lwon)}</strong></td>
+            <td class="num">{pct(r.tokens.lwon, r.tokens.min)}</td>
+            <td class="num">{pct(r.tokens.lwon, r.tokens.toon)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    LWON is smaller than minified JSON on every dataset. It is far ahead of TOON on nested, nullable
+    and recursive data, slightly ahead on flat tables, and level on the search result, where long
+    free-text snippets dominate and no format can compress prose.
+  </p>
+
+  <h2 id="method">Method</h2>
+  <ul>
+    <li>Datasets are generated from a fixed seed so every run is identical. You can load each one in the <a href="/playground">playground</a>.</li>
+    <li>Tokens are counted with the {bench.tokenizer} tokenizer.</li>
+    <li>The baseline is minified JSON. Indented JSON is shown for reference only; comparing against it would overstate the savings.</li>
+    <li>TOON output uses {bench.toon} with default options.</li>
+    <li>LWON output uses the reference encoder with default options.</li>
+  </ul>
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>o200k is one tokenizer. Claude and Gemini tokenize differently; their counts are being added.</li>
+    <li>The datasets are synthetic, shaped after common API and tool payloads.</li>
+    <li>Token count is not comprehension. Accuracy tests with real models are in progress, see <a href="/ai#accuracy">For AI</a>.</li>
+  </ul>
+
+  <h2 id="reproduce">Reproduce</h2>
+  <pre class="code"><code>git clone https://github.com/ahmetzencirli/lwon
+cd lwon
+npm install
+npm run bench</code></pre>
+</Prose>
+
+<style>
+  .wide { margin: 28px 0 8px; }
+  .ds { display: block; font-weight: 600; }
+  th[scope='row'] .muted { font-weight: 400; font-size: 0.82rem; }
+  .table th[scope='row'] { background: none; font-size: 0.92rem; min-width: 12em; }
+  .table-wrap :global(table) { border: 0; display: table; }
+</style>

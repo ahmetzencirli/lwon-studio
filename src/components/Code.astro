@@ -1,0 +1,20 @@
+---
+import { highlightJson, highlightLwon } from '../lib/highlight.ts';
+
+interface Props {
+  code: string;
+  lang?: 'lwon' | 'json' | 'text';
+  label?: string;
+}
+const { code, lang = 'lwon', label } = Astro.props;
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const html = lang === 'lwon' ? highlightLwon(code) : lang === 'json' ? highlightJson(code) : esc(code);
+---
+<div class="code-block">
+  {label && <span class="code-label">{label}</span>}
+  <pre class="code" tabindex="0" aria-label={label ? `${label} code` : 'Code'}><code set:html={html} /></pre>
+</div>
+
+<style>
+  .code-block { min-width: 0; }
+</style>

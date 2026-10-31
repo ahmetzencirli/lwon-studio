@@ -1,0 +1,89 @@
+---
+import bench from '../data/bench.json';
+
+interface Props { names?: string[] }
+const { names } = Astro.props;
+const results = names ? bench.results.filter((r) => names.includes(r.name)) : bench.results;
+
+const series = [
+  { key: 'min', label: 'JSON (minified)', cls: 'json' },
+  { key: 'toon', label: 'TOON', cls: 'toon' },
+  { key: 'lwon', label: 'LWON', cls: 'lwon' },
+] as const;
+const max = Math.max(...results.flatMap((r) => series.map((s) => r.tokens[s.key] / r.tokens.min)));
+const fmt = (n: number) => n.toLocaleString('en-US');
+const pct = (n: number, base: number) => {
+  const d = Math.round((n / base - 1) * 100);
+  return d === 0 ? '±0%' : d > 0 ? `+${d}%` : `−${-d}%`;
+};
+---
+<figure class="chart" data-reveal>
+  <figcaption class="chart-head">
+    <span class="chart-title">Tokens per dataset, relative to minified JSON</span>
+    <ul class="legend" aria-label="Legend">
+      {series.map((s) => <li><span class={`swatch ${s.cls}`} aria-hidden="true"></span>{s.label}</li>)}
+    </ul>
+  </figcaption>
+  <div class="rows">
+    {results.map((r, gi) => (
+      <section class="group" aria-label={`${r.name}: ${r.shape}`}>
+        <p class="group-name"><strong>{r.name}</strong> <span class="muted">{r.shape}</span></p>
+        {series.map((s, si) => {
+          const v = r.tokens[s.key];
+          return (
+            <div class="bar-row">
+              <span class="bar-label">{s.label}</span>
+              <div class="track">
+                <span
+                  class={`bar ${s.cls}`}
+                  style={`--f:${(v / r.tokens.min / max).toFixed(4)}; --i:${gi * 3 + si}`}
+                  aria-hidden="true"
+                ></span>
+                <span class="bar-value">
+                  {fmt(v)}{s.key !== 'min' && <span class="muted"> · {pct(v, r.tokens.min)}</span>}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+    ))}
+  </div>
+  <p class="chart-note muted">Tokenizer: {bench.tokenizer}. TOON: {bench.toon}. Lower is better.</p>
+</figure>
+
+<style>
+  .chart { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: clamp(18px, 3vw, 28px); }
+  .chart-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  .chart-title { font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0; padding: 0; font-size: 0.85rem; color: var(--text-2); }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .rows { display: grid; gap: 22px; }
+  @media (min-width: 900px) { .rows { grid-template-columns: 1fr 1fr; column-gap: 40px; } }
+  .group-name { font-size: 0.95rem; margin: 0 0 8px; letter-spacing: 0; }
+  .group-name .muted { font-weight: 400; font-size: 0.85rem; }
+  .bar-row { display: grid; grid-template-columns: 7.5em 1fr; align-items: center; gap: 10px; min-height: 26px; }
+  .bar-label { font-size: 0.8rem; color: var(--text-2); }
+  .track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bar {
+    display: block; height: 14px; flex: none; min-width: 4px;
+    /* Leave room for the value label after the longest bar. */
+    width: calc((100% - 7em) * var(--f));
+    border-radius: 0 4px 4px 0;
+    transform-origin: left center;
+  }
+  .bar.json, .swatch.json { background: var(--series-json); }
+  .bar.toon, .swatch.toon { background: var(--series-toon); }
+  .bar.lwon, .swatch.lwon { background: var(--series-lwon); }
+  .bar-value { font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
+  .chart-note { font-size: 0.8rem; margin: 20px 0 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.js) .chart .bar { transform: scaleX(0); transition: transform 0.9s var(--ease); transition-delay: calc(var(--i) * 35ms); }
+    :global(.js) .chart.is-visible .bar { transform: none; }
+  }
+  @media (forced-colors: active) {
+    .bar, .swatch { forced-color-adjust: none; }
+  }
+</style>
