@@ -45,7 +45,7 @@ const headings = [
     The tokens are saved only if the model never sees the JSON. Encode in your own code, where the data
     arrives: the tool handler, the API client, the retrieval step.
   </p>
-  <Shiki lang="ts" themes={themes} code={`import { encode, PRIMER } from 'lwon';
+  <Shiki lang="ts" themes={themes} code={`import { encode, PRIMER } from '@lwon/core';
 
 const rows = await db.query('select id, name, plan, mrr from accounts limit 200');
 

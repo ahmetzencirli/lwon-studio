@@ -10,7 +10,8 @@ JavaScript unless they need it; the playground's tokenizer loads in a Web Worker
 ## Develop
 
 The site vendors the LWON library, spec and benchmark data from a sibling
-checkout of the `lwon` repository until the `lwon` package is on npm:
+checkout of the `lwon` repository, so it always shows the latest unreleased
+library, spec and benchmark results (the published library is `@lwon/core`):
 
 ```
 workspace/

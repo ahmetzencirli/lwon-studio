@@ -1,6 +1,7 @@
 // Copies the LWON library, spec and benchmark data from a sibling checkout of
-// github.com/ahmetzencirli/lwon. Until the `lwon` package is on npm the site
-// vendors these files; run `npm run sync` after changing them in that repo.
+// github.com/ahmetzencirli/lwon. The site vendors the library source (published
+// as @lwon/core) so it can show unreleased changes together with the spec and
+// benchmark data; run `npm run sync` after changing them in that repo.
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 
 const root = new URL('../../lwon/', import.meta.url);

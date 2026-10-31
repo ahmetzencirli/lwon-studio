@@ -9,21 +9,21 @@ description: Install the LWON library, encode and decode from JavaScript or Type
 The reference library is written in TypeScript, has no runtime dependencies and
 runs in Node.js 20+, Deno, Bun and browsers.
 
-> **Status:** LWON is in 1.0 beta. The `lwon` package will be published to npm
-> once the format is final. Until then, use the source from
-> [GitHub](https://github.com/ahmetzencirli/lwon) or try it in the
-> [playground](playground).
+> **Status:** LWON is in 1.0 beta. The library is on npm as
+> [`@lwon/core`](https://www.npmjs.com/package/@lwon/core); the format may still
+> change before 1.0. Source on [GitHub](https://github.com/ahmetzencirli/lwon).
+> You can also try it in the [playground](playground).
 
 ## Install
 
 ```bash
-npm install lwon
+npm install @lwon/core
 ```
 
 ## Encode and decode
 
 ```ts
-import { encode, decode } from 'lwon';
+import { encode, decode } from '@lwon/core';
 
 const text = encode([
   { id: 1, name: 'Ada', role: 'admin' },
@@ -78,7 +78,7 @@ at the cost of a few more tokens. See [Benchmarks](benchmarks#cost).
 `decode` throws an `LwonError` with the position of the problem:
 
 ```ts
-import { decode, LwonError } from 'lwon';
+import { decode, LwonError } from '@lwon/core';
 
 try {
   decode('id name\n[[1 Ada extra]]');
@@ -97,7 +97,7 @@ try {
 alongside LWON data. See [For AI](ai) for when this pays off.
 
 ```ts
-import { encode, PRIMER } from 'lwon';
+import { encode, PRIMER } from '@lwon/core';
 
 const prompt = `${PRIMER}\n\n${encode(toolResult)}`;
 ```
@@ -105,13 +105,14 @@ const prompt = `${PRIMER}\n\n${encode(toolResult)}`;
 ## Command line
 
 ```bash
-npx lwon encode data.json > data.lwon   # JSON to LWON
-npx lwon decode data.lwon --pretty      # LWON to JSON
-npx lwon stats data.json                # bytes for indented JSON, minified JSON and LWON
-npx lwon primer                         # print the prompt primer
+npx @lwon/core encode data.json > data.lwon   # JSON to LWON
+npx @lwon/core decode data.lwon --pretty      # LWON to JSON
+npx @lwon/core stats data.json                # bytes for indented JSON, minified JSON and LWON
+npx @lwon/core primer                         # print the prompt primer
 ```
 
-Every command reads standard input when no file is given.
+Every command reads standard input when no file is given. Installed globally
+(`npm install -g @lwon/core`), the command is simply `lwon`.
 
 ## Other languages
 
