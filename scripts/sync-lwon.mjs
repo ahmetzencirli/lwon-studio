@@ -19,5 +19,6 @@ for (const f of readdirSync(new URL('packages/lwon/src/', root))) {
 cpSync(new URL('SPEC.md', root), new URL('content/spec.md', here));
 cpSync(new URL('bench/results.json', root), new URL('data/bench.json', here));
 cpSync(new URL('bench/eval/results.json', root), new URL('data/eval.json', here));
+cpSync(new URL('bench/eval/results-sparse.json', root), new URL('data/eval-sparse.json', here));
 cpSync(new URL('bench/data/', root), new URL('data/samples/', here), { recursive: true });
 console.log('Synced lwon library, spec and benchmark data.');

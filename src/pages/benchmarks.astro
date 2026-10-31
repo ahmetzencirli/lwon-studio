@@ -3,7 +3,7 @@ import Prose from '../layouts/Prose.astro';
 import BenchChart from '../components/BenchChart.astro';
 import bench from '../data/bench.json';
 import { url } from '../lib/url.ts';
-import { accuracy, datasets, primerTokens, questionCount, type Fmt } from '../lib/results.ts';
+import { accuracy, basicPerQuestion, change, datasets, primerTokens, questionCount, sparse, type Fmt, type PerQuestion } from '../lib/results.ts';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 const pct = (n: number, base: number) => {
@@ -14,6 +14,8 @@ const formats: Fmt[] = ['json', 'toon', 'lwon'];
 const headings = [
   { depth: 2, slug: 'tokens', text: 'Claude tokens' },
   { depth: 2, slug: 'accuracy', text: 'Accuracy' },
+  { depth: 2, slug: 'sparse', text: 'Harder test: sparse data' },
+  { depth: 2, slug: 'cost', text: 'Cost per question' },
   { depth: 2, slug: 'o200k', text: 'Another tokenizer' },
   { depth: 2, slug: 'method', text: 'Method' },
   { depth: 2, slug: 'limits', text: 'Limits' },
@@ -98,8 +100,79 @@ const headings = [
   <p>
     At the default (medium) effort, every model answered every question correctly in every format.
     With thinking turned down to low effort, Haiku miscounted once in LWON, on how many log events carry
-    an optional field (22 instead of 23). One miss is too few to call a trend, but it marks the case to
+    an optional field (22 instead of 23). One miss is too few to call a trend, but it marked the case to
     test harder: counting keys that are absent from some rows.
+  </p>
+
+  <h2 id="sparse">Harder test: sparse data</h2>
+  <p>
+    150 log events where most fields are optional and some are null: {fmt(sparse.tokens.json.raw)} Claude
+    tokens as JSON, {fmt(sparse.tokens.toon.raw)} as TOON and {fmt(sparse.tokens.lwon.raw)} as LWON
+    ({change(sparse.tokens.lwon.raw, sparse.tokens.json.raw)}). The questions count keys across rows,
+    add up values, list the keys of one row, and ask whether a key is absent or null. Each was asked
+    {sparse.trials} times to Haiku and 2 times to Sonnet.
+  </p>
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Correct answers on the sparse data per model and format</caption>
+      <thead><tr><th scope="col">Model</th>{formats.map((f) => <th scope="col" class="num">{f.toUpperCase()}</th>)}</tr></thead>
+      <tbody>
+        {sparse.accuracy.map((a) => (
+          <tr>
+            <th scope="row">{a.label}</th>
+            {formats.map((f) => <td class="num">{a.cells[f].correct}/{a.cells[f].total}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    LWON scored like JSON. Every wrong answer, in every format, was a count over 150 rows that was off
+    by one or two. Every question about a single row, including absent versus null, was answered
+    correctly. TOON counted slightly better: on irregular data it writes one <code>key: value</code> line
+    per field and states the row count, which makes keys easy to tally but costs
+    {change(sparse.tokens.toon.raw, sparse.tokens.lwon.raw)} more tokens than LWON.
+  </p>
+
+  <h2 id="cost">Cost per question</h2>
+  <p>
+    Models spend more output tokens, including thinking, to read LWON: they have to match each value to
+    its field by position. Output tokens cost several times more than input, so the full cost of a
+    question depends on how the data is sent. <em>Sent once</em> prices the data as normal input;
+    <em>cached</em> prices it as a cache read, when the same data answers many questions.
+  </p>
+  {([['Regular data (six datasets)', basicPerQuestion], ['Sparse data', sparse.perQuestion]] as [string, PerQuestion[]][]).map(([title, rows]) => (
+    <div class="table-wrap">
+      <table class="table">
+        <caption>{title}: change in cost against JSON</caption>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col" class="num">Output tokens JSON → LWON</th>
+            <th scope="col" class="num">LWON sent once</th>
+            <th scope="col" class="num">LWON cached</th>
+            <th scope="col" class="num">TOON sent once</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <th scope="row">{r.label}</th>
+              <td class="num">{fmt(Math.round(r.cells.json.output))} → {fmt(Math.round(r.cells.lwon.output))}</td>
+              <td class="num" class:list={['num', r.cells.lwon.once < r.cells.json.once ? 'good' : 'miss']}>{change(r.cells.lwon.once, r.cells.json.once)}</td>
+              <td class="num" class:list={['num', r.cells.lwon.cached < r.cells.json.cached ? 'good' : 'miss']}>{change(r.cells.lwon.cached, r.cells.json.cached)}</td>
+              <td class="num">{change(r.cells.toon.once, r.cells.json.once)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ))}
+  <p>
+    On regular data sent once, LWON is the cheapest format for every model. When the same data is cached
+    and reused, the extra thinking cancels the saving. On sparse data with counting, LWON costs more,
+    most of all with Haiku. Cutting this reasoning overhead, through the primer and the encoder, is the
+    next piece of work.
   </p>
 
   <h2 id="o200k">Another tokenizer</h2>
@@ -143,7 +216,8 @@ const headings = [
   <h2 id="limits">Limits</h2>
   <ul>
     <li>The datasets are synthetic, shaped after common API and tool payloads, and up to about 8,000 tokens.</li>
-    <li>Every question was asked once. The medium-effort results sit at the ceiling, so this test shows LWON does not hurt accuracy on these tasks; it cannot show small differences. A harder test with repeated trials is next.</li>
+    <li>The regular-data test sits at the ceiling: it shows LWON does not hurt accuracy there, not small differences. The sparse test separates the formats, but with 22 questions and 2–3 trials, a difference of a few answers is within noise.</li>
+    <li>LWON gets a primer of about {primerTokens} tokens; JSON and TOON get a one-line label.</li>
   </ul>
 
   <h2 id="reproduce">Reproduce</h2>
@@ -153,7 +227,9 @@ npm install
 npm run bench                 # o200k token counts
 npm run eval:tokens           # Claude token counts (needs ANTHROPIC_API_KEY)
 npm run eval -- --budget 2    # accuracy test, about $1.30 for three models
-npm run eval:report</code></pre>
+npm run eval -- --suite sparse --trials 3 --budget 2
+npm run eval:report
+npm run eval:report -- --suite sparse</code></pre>
 </Prose>
 
 <style>
@@ -163,4 +239,6 @@ npm run eval:report</code></pre>
   .table th[scope='row'] { background: none; font-size: 0.92rem; min-width: 10em; }
   .table-wrap :global(table) { border: 0; display: table; }
   td.miss { color: var(--danger); font-weight: 600; }
+  td.good { color: var(--ok); font-weight: 600; }
+  caption:not(.visually-hidden) { caption-side: top; text-align: left; padding: 12px 14px 4px; font-weight: 600; font-size: 0.9rem; }
 </style>

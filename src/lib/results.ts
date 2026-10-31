@@ -1,6 +1,7 @@
 // Benchmark and eval results in the shapes the pages need.
 import bench from '../data/bench.json';
 import evalResults from '../data/eval.json';
+import sparseResults from '../data/eval-sparse.json';
 
 export type Fmt = 'json' | 'toon' | 'lwon';
 type TokenCell = { raw: number; prompt: number };
@@ -41,13 +42,28 @@ export const primerTokens = Math.round(
 );
 
 export interface Accuracy { label: string; cells: Record<Fmt, { correct: number; total: number }> }
+export interface PerQuestion { label: string; cells: Record<Fmt, { output: number; once: number; cached: number }> }
 
 const order = ['claude-haiku-5-5', 'claude-haiku-5-5 (effort low)', 'claude-sonnet-5-5', 'claude-opus-5-5'];
 const pretty = (label: string) =>
   label.replace('claude-', 'Claude ').replace(/-(\d)-(\d)/, ' $1.$2').replace('haiku', 'Haiku').replace('sonnet', 'Sonnet').replace('opus', 'Opus');
+const rows = <T>(o: Record<string, T>) =>
+  Object.entries(o).sort(([a], [b]) => order.indexOf(a) - order.indexOf(b)).map(([label, cells]) => ({ label: pretty(label), cells }));
 
-export const accuracy: Accuracy[] = Object.entries(evalResults.summary as Record<string, Record<Fmt, { correct: number; total: number }>>)
-  .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-  .map(([label, cells]) => ({ label: pretty(label), cells }));
-
+export const accuracy: Accuracy[] = rows(evalResults.summary as Record<string, Accuracy['cells']>);
 export const questionCount = accuracy[0]?.cells.json.total ?? 0;
+export const basicPerQuestion: PerQuestion[] = rows(evalResults.perQuestion as Record<string, PerQuestion['cells']>);
+
+/** The harder suite: 150 sparse log events, each question asked several times. */
+export const sparse = {
+  trials: sparseResults.trials,
+  accuracy: rows(sparseResults.summary as Record<string, Accuracy['cells']>),
+  perQuestion: rows(sparseResults.perQuestion as Record<string, PerQuestion['cells']>),
+  tokens: (Object.values(sparseResults.tokens)[0] as Record<string, Record<Fmt, TokenCell>>).sparse,
+};
+
+/** Signed change against a baseline, e.g. "−24%" or "+41%". */
+export const change = (n: number, base: number) => {
+  const d = Math.round((n / base - 1) * 100);
+  return d === 0 ? '±0%' : d > 0 ? `+${d}%` : `−${-d}%`;
+};
