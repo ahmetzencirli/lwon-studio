@@ -3,31 +3,110 @@ import Prose from '../layouts/Prose.astro';
 import BenchChart from '../components/BenchChart.astro';
 import bench from '../data/bench.json';
 import { url } from '../lib/url.ts';
+import { accuracy, datasets, primerTokens, questionCount, type Fmt } from '../lib/results.ts';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 const pct = (n: number, base: number) => {
   const d = Math.round((n / base - 1) * 100);
   return d === 0 ? '±0%' : d > 0 ? `+${d}%` : `−${-d}%`;
 };
+const formats: Fmt[] = ['json', 'toon', 'lwon'];
 const headings = [
-  { depth: 2, slug: 'results', text: 'Results' },
+  { depth: 2, slug: 'tokens', text: 'Claude tokens' },
+  { depth: 2, slug: 'accuracy', text: 'Accuracy' },
+  { depth: 2, slug: 'o200k', text: 'Another tokenizer' },
   { depth: 2, slug: 'method', text: 'Method' },
   { depth: 2, slug: 'limits', text: 'Limits' },
   { depth: 2, slug: 'reproduce', text: 'Reproduce' },
 ];
 ---
-<Prose title="Benchmarks" description="Token counts for JSON, TOON and LWON on six realistic datasets, with method and limits." headings={headings}>
+<Prose title="Benchmarks" description="Claude token counts and answer accuracy for JSON, TOON and LWON on six realistic datasets, with method and limits." headings={headings}>
   <h1>Benchmarks</h1>
   <p class="lead">
-    How many tokens the same data costs as JSON, TOON and LWON. Every LWON result is decoded again and
-    checked against the original before it is counted.
+    How many tokens the same data costs as JSON, TOON and LWON, and whether Claude still answers
+    questions about it correctly. Every LWON result is decoded again and checked against the original.
   </p>
   <div class="wide"><BenchChart /></div>
 
-  <h2 id="results">Results</h2>
+  <h2 id="tokens">Claude tokens</h2>
+  <p>
+    Counted with the Claude <code>count_tokens</code> API; Haiku, Sonnet and Opus 5.5 share a tokenizer.
+    The last column adds the LWON primer, about {primerTokens} tokens, which a model needs once per conversation.
+  </p>
   <div class="table-wrap">
     <table class="table">
-      <caption class="visually-hidden">Tokens per format and dataset</caption>
+      <caption class="visually-hidden">Claude tokens per format and dataset</caption>
+      <thead>
+        <tr>
+          <th scope="col">Dataset</th>
+          <th scope="col" class="num">JSON minified</th>
+          <th scope="col" class="num">TOON</th>
+          <th scope="col" class="num">LWON</th>
+          <th scope="col" class="num">LWON vs JSON</th>
+          <th scope="col" class="num">LWON + primer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {datasets.map((d) => (
+          <tr>
+            <th scope="row"><span class="ds">{d.name}</span><span class="muted">{d.shape}</span></th>
+            <td class="num">{fmt(d.claude.json)}</td>
+            <td class="num">{fmt(d.claude.toon)}</td>
+            <td class="num"><strong>{fmt(d.claude.lwon)}</strong></td>
+            <td class="num">{pct(d.claude.lwon, d.claude.json)}</td>
+            <td class="num">{fmt(d.lwonWithPrimer)} <span class="muted">({pct(d.lwonWithPrimer, d.claude.json)})</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    LWON is smaller than minified JSON on every dataset and smaller than TOON on all but the search
+    result, where long free-text snippets dominate and TOON is 4% smaller. On the 20-node menu the
+    primer costs more than LWON saves, so small payloads are better sent as JSON.
+  </p>
+
+  <h2 id="accuracy">Accuracy</h2>
+  <p>
+    Each model answered {questionCount} questions per format about the same datasets: finding a record,
+    following nested fields, counting and summing, walking the tree, and telling an absent key from a
+    null one. Answers were checked against values computed from the data.
+  </p>
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Correct answers per model and format</caption>
+      <thead>
+        <tr>
+          <th scope="col">Model</th>
+          {formats.map((f) => <th scope="col" class="num">{f.toUpperCase()}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {accuracy.map((a) => (
+          <tr>
+            <th scope="row">{a.label}</th>
+            {formats.map((f) => (
+              <td class="num" class:list={['num', { miss: a.cells[f].correct < a.cells[f].total }]}>
+                {a.cells[f].correct}/{a.cells[f].total}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    At the default (medium) effort, every model answered every question correctly in every format.
+    With thinking turned down to low effort, Haiku miscounted once in LWON, on how many log events carry
+    an optional field (22 instead of 23). One miss is too few to call a trend, but it marks the case to
+    test harder: counting keys that are absent from some rows.
+  </p>
+
+  <h2 id="o200k">Another tokenizer</h2>
+  <p>The same data counted with {bench.tokenizer}, used by other model families.</p>
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">o200k tokens per format and dataset</caption>
       <thead>
         <tr>
           <th scope="col">Dataset</th>
@@ -36,57 +115,52 @@ const headings = [
           <th scope="col" class="num">TOON</th>
           <th scope="col" class="num">LWON</th>
           <th scope="col" class="num">LWON vs JSON</th>
-          <th scope="col" class="num">LWON vs TOON</th>
         </tr>
       </thead>
       <tbody>
-        {bench.results.map((r) => (
+        {datasets.map((d) => (
           <tr>
-            <th scope="row"><span class="ds">{r.name}</span><span class="muted">{r.shape}</span></th>
-            <td class="num">{fmt(r.tokens.pretty)}</td>
-            <td class="num">{fmt(r.tokens.min)}</td>
-            <td class="num">{fmt(r.tokens.toon)}</td>
-            <td class="num"><strong>{fmt(r.tokens.lwon)}</strong></td>
-            <td class="num">{pct(r.tokens.lwon, r.tokens.min)}</td>
-            <td class="num">{pct(r.tokens.lwon, r.tokens.toon)}</td>
+            <th scope="row"><span class="ds">{d.name}</span></th>
+            <td class="num">{fmt(d.o200k.pretty)}</td>
+            <td class="num">{fmt(d.o200k.json)}</td>
+            <td class="num">{fmt(d.o200k.toon)}</td>
+            <td class="num"><strong>{fmt(d.o200k.lwon)}</strong></td>
+            <td class="num">{pct(d.o200k.lwon, d.o200k.json)}</td>
           </tr>
         ))}
       </tbody>
     </table>
   </div>
-  <p>
-    LWON is smaller than minified JSON on every dataset. It is far ahead of TOON on nested, nullable
-    and recursive data, slightly ahead on flat tables, and level on the search result, where long
-    free-text snippets dominate and no format can compress prose.
-  </p>
 
   <h2 id="method">Method</h2>
   <ul>
     <li>Datasets are generated from a fixed seed so every run is identical. You can load each one in the <a href={url('/playground')}>playground</a>.</li>
-    <li>Tokens are counted with the {bench.tokenizer} tokenizer.</li>
-    <li>The baseline is minified JSON. Indented JSON is shown for reference only; comparing against it would overstate the savings.</li>
-    <li>TOON output uses {bench.toon} with default options.</li>
-    <li>LWON output uses the reference encoder with default options.</li>
+    <li>The baseline is minified JSON. Indented JSON is shown only for reference; comparing against it would overstate the savings.</li>
+    <li>TOON output uses {bench.toon} with default options; LWON uses the reference encoder with default options.</li>
+    <li>In the accuracy test, JSON and TOON get a one-line label and LWON gets its primer. Each question is asked once per model and format, with adaptive thinking at medium effort unless noted.</li>
   </ul>
 
   <h2 id="limits">Limits</h2>
   <ul>
-    <li>o200k is one tokenizer. Claude and Gemini tokenize differently; their counts are being added.</li>
-    <li>The datasets are synthetic, shaped after common API and tool payloads.</li>
-    <li>Token count is not comprehension. Accuracy tests with real models are in progress, see <a href={url('/ai#accuracy')}>For AI</a>.</li>
+    <li>The datasets are synthetic, shaped after common API and tool payloads, and up to about 8,000 tokens.</li>
+    <li>Every question was asked once. The medium-effort results sit at the ceiling, so this test shows LWON does not hurt accuracy on these tasks; it cannot show small differences. A harder test with repeated trials is next.</li>
   </ul>
 
   <h2 id="reproduce">Reproduce</h2>
   <pre class="code"><code>git clone https://github.com/ahmetzencirli/lwon
 cd lwon
 npm install
-npm run bench</code></pre>
+npm run bench                 # o200k token counts
+npm run eval:tokens           # Claude token counts (needs ANTHROPIC_API_KEY)
+npm run eval -- --budget 2    # accuracy test, about $1.30 for three models
+npm run eval:report</code></pre>
 </Prose>
 
 <style>
   .wide { margin: 28px 0 8px; }
   .ds { display: block; font-weight: 600; }
   th[scope='row'] .muted { font-weight: 400; font-size: 0.82rem; }
-  .table th[scope='row'] { background: none; font-size: 0.92rem; min-width: 12em; }
+  .table th[scope='row'] { background: none; font-size: 0.92rem; min-width: 10em; }
   .table-wrap :global(table) { border: 0; display: table; }
+  td.miss { color: var(--danger); font-weight: 600; }
 </style>

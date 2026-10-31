@@ -4,11 +4,13 @@ import HeroDemo from '../components/HeroDemo.astro';
 import BenchChart from '../components/BenchChart.astro';
 import Code from '../components/Code.astro';
 import { encode } from '../lib/lwon/index.ts';
-import bench from '../data/bench.json';
+import { accuracy, primerTokens, questionCount, savingsRange } from '../lib/results.ts';
 import { url } from '../lib/url.ts';
 
-const savings = bench.results.map((r) => Math.round((1 - r.tokens.lwon / r.tokens.min) * 100));
-const range = `${Math.min(...savings)}–${Math.max(...savings)}%`;
+const range = savingsRange;
+const main = accuracy.filter((a) => !a.label.includes('effort'));
+const lwonCorrect = main.reduce((s, a) => s + a.cells.lwon.correct, 0);
+const lwonTotal = main.reduce((s, a) => s + a.cells.lwon.total, 0);
 
 const ideas = [
   {
@@ -33,7 +35,7 @@ const ideas = [
   },
 ];
 ---
-<Base title="LWON" description={`LWON is a lossless, two-way notation for JSON that writes keys once. ${range} fewer tokens than minified JSON for LLM prompts and APIs.`}>
+<Base title="LWON" description={`LWON is a lossless, two-way notation for JSON that writes keys once. ${range} fewer Claude tokens than minified JSON for LLM prompts and APIs.`}>
   <section class="hero">
     <div class="container hero-grid">
       <div class="hero-copy">
@@ -41,7 +43,7 @@ const ideas = [
         <h1>JSON, with the keys written&nbsp;once.</h1>
         <p class="lead">
           LWON writes the shape of your data once and the values by position. It converts any JSON value
-          and back without loss, and uses <strong>{range} fewer tokens</strong> than minified JSON on typical
+          and back without loss, and uses <strong>{range} fewer Claude tokens</strong> than minified JSON on typical
           API and tool data.
         </p>
         <div class="actions">
@@ -82,8 +84,8 @@ const ideas = [
       <span class="eyebrow">Benchmarks</span>
       <h2 id="bench">Fewer tokens on the data you actually send.</h2>
       <p class="lead">
-        Six realistic datasets, measured against minified JSON, the fair baseline, and against TOON,
-        another format built for LLMs. LWON's lead grows with nesting.
+        Six realistic datasets, counted with Claude's own tokenizer and measured against minified JSON,
+        the fair baseline, and against TOON, another format built for LLMs. LWON's lead grows with nesting.
       </p>
       <BenchChart />
       <p class="more"><a href={url('/benchmarks')}>Method and full results →</a></p>
@@ -125,8 +127,12 @@ const ideas = [
         <h2 id="ai">Convert before the model reads it.</h2>
         <p class="lead">
           Tool results, API responses and retrieved records are mostly repeated keys and punctuation.
-          Encode them as LWON in your tool layer and send a 220-token primer once, so the model reads the
+          Encode them as LWON in your tool layer and send a primer of about {primerTokens} tokens once, so the model reads the
           same data for fewer tokens.
+        </p>
+        <p class="proof">
+          <strong>{lwonCorrect} of {lwonTotal}</strong> answers were correct when Claude Haiku, Sonnet and Opus 5.5
+          answered {questionCount} questions about LWON data, the same score as with JSON.
         </p>
         <a class="btn btn-ghost" href={url('/ai')}>Read the AI guide</a>
       </div>
@@ -213,6 +219,8 @@ const ideas = [
       100% { transform: translateY(calc(var(--flow-h, 220px))); opacity: 0; }
     }
   }
+
+  .proof { color: var(--text-2); margin: -4px 0 24px; padding-left: 14px; border-left: 3px solid var(--ok); }
 
   .cta { text-align: center; }
   .cta-inner { display: flex; flex-direction: column; align-items: center; }

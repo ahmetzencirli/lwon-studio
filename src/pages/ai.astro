@@ -1,16 +1,16 @@
 ---
 import { Code as Shiki } from 'astro:components';
-import { encode as countTokens } from 'gpt-tokenizer';
 import Prose from '../layouts/Prose.astro';
 import Code from '../components/Code.astro';
 import { PRIMER } from '../lib/lwon/index.ts';
-import bench from '../data/bench.json';
+import { accuracy, medianSaving, primerTokens, questionCount } from '../lib/results.ts';
 import { url } from '../lib/url.ts';
 
-const primerTokens = countTokens(PRIMER).length;
-const savings = bench.results.map((r) => 1 - r.tokens.lwon / r.tokens.min);
-const typical = savings.sort((a, b) => a - b)[Math.floor(savings.length / 2)];
+const typical = medianSaving;
 const breakEven = Math.round(primerTokens / typical / 50) * 50;
+const main = accuracy.filter((a) => !a.label.includes('effort'));
+const total = main.reduce((s, a) => s + a.cells.lwon.total, 0);
+const correct = (f: 'json' | 'lwon') => main.reduce((s, a) => s + a.cells[f].correct, 0);
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
 const headings = [
@@ -59,7 +59,7 @@ const response = await client.messages.create({
   <h2 id="primer">Tell the model about the format</h2>
   <p>
     Models do not know LWON yet, so send this primer once per conversation, ideally in the system prompt
-    where prompt caching makes it nearly free after the first call. It is {primerTokens} tokens long and
+    where prompt caching makes it nearly free after the first call. It is about {primerTokens} Claude tokens and
     is exported by the library as <code>PRIMER</code>.
   </p>
   <Code code={PRIMER} lang="text" label="Primer" />
@@ -85,9 +85,15 @@ const response = await client.messages.create({
 
   <h2 id="accuracy">Accuracy</h2>
   <p>
-    Fewer tokens only help if the model still understands the data. We are measuring this directly by
-    asking models the same questions about the same data in JSON, LWON and TOON, and will publish the
-    results here. Until then, test LWON on your own prompts before switching.
+    Fewer tokens only help if the model still understands the data. Claude Haiku, Sonnet and Opus 5.5
+    each answered {questionCount} questions about the benchmark data in JSON, TOON and LWON. With LWON
+    they got <strong>{correct('lwon')} of {total}</strong> right, the same as with JSON ({correct('json')} of {total}).
+    With thinking turned down to low effort, Haiku miscounted once in LWON, on how many rows carry an
+    optional field. <a href={url('/benchmarks#accuracy')}>Full results</a>.
+  </p>
+  <p>
+    These questions sit at the ceiling for current models, so a harder test with repeated trials is
+    next. If your prompts need exact counts over sparse data, check them on LWON before switching.
   </p>
 </Prose>
 

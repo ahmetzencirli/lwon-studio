@@ -54,8 +54,15 @@ const toc = headings.filter((h) => h.depth === 2);
     wrap.append(btn);
   });
 
-  // On narrow screens the contents list starts closed.
-  if (matchMedia('(max-width: 979px)').matches) document.querySelector('.toc details')?.removeAttribute('open');
+  // The contents list is collapsible on narrow screens and always open in the desktop sidebar,
+  // whose toggle is hidden, so it follows the viewport when the window is resized.
+  const toc = document.querySelector<HTMLDetailsElement>('.toc details');
+  const narrow = matchMedia('(max-width: 979px)');
+  if (toc) {
+    const sync = () => (toc.open = !narrow.matches);
+    sync();
+    narrow.addEventListener('change', sync);
+  }
 </script>
 
 <style>
