@@ -13,7 +13,6 @@ const total = main.reduce((s, a) => s + a.cells.lwon.total, 0);
 const correct = (f: 'json' | 'lwon') => main.reduce((s, a) => s + a.cells[f].correct, 0);
 const sonnet = basicPerQuestion.find((r) => r.label.includes('Sonnet'))!;
 const sparseSonnet = sparse.perQuestion.find((r) => r.label.includes('Sonnet'))!;
-const sparseHaiku = sparse.perQuestion.find((r) => r.label === 'Claude Haiku 5.5')!;
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
 const headings = [
@@ -92,26 +91,31 @@ const response = await client.messages.create({
     Fewer tokens only help if the model still understands the data. Claude Haiku, Sonnet and Opus 5.5
     each answered {questionCount} questions about the benchmark data in JSON, TOON and LWON. With LWON
     they got <strong>{correct('lwon')} of {total}</strong> right, the same as with JSON ({correct('json')} of {total}).
-    On a harder set of 150 sparse log events, LWON again scored like JSON; the only misses, in every
-    format, were counts over many rows that were off by one or two.
+    On a harder set of 150 sparse log events, LWON stayed close to JSON; the only misses, in every
+    format, were counts over many rows that were off by one to three, or a sum.
     <a href={url('/benchmarks#sparse')}>Full results</a>.
   </p>
 
   <h2 id="cost">When it pays off</h2>
   <p>
-    Fewer input tokens is not the whole bill. Models think longer about LWON, because they match each
-    value to its field by position, and output tokens cost several times more than input. Measured on
-    Claude Sonnet 5.5, the full cost of a question compared with JSON was:
+    Fewer input tokens is not the whole bill: models also think about the data, and output tokens cost
+    several times more than input. Measured on Claude Sonnet 5.5, the full cost of a question compared
+    with JSON was:
   </p>
   <ul>
     <li><strong>Regular data, sent once: {change(sonnet.cells.lwon.once, sonnet.cells.json.once)}.</strong> The main case LWON is for: a tool result or API response read once.</li>
-    <li>Regular data, cached and reused for many questions: {change(sonnet.cells.lwon.cached, sonnet.cells.json.cached)}, about even.</li>
-    <li>Sparse data with counting, sent once: {change(sparseSonnet.cells.lwon.once, sparseSonnet.cells.json.once)}; cached: {change(sparseSonnet.cells.lwon.cached, sparseSonnet.cells.json.cached)}. With Claude Haiku 5.5 it was {change(sparseHaiku.cells.lwon.once, sparseHaiku.cells.json.once)} even sent once.</li>
+    <li>Regular data, cached and reused for many questions: {change(sonnet.cells.lwon.cached, sonnet.cells.json.cached)}.</li>
+    <li>Sparse data with counting, sent once: {change(sparseSonnet.cells.lwon.once, sparseSonnet.cells.json.once)}; cached: {change(sparseSonnet.cells.lwon.cached, sparseSonnet.cells.json.cached)}.</li>
   </ul>
   <p>
-    So use LWON for large, regular payloads that the model reads once, and keep JSON for small payloads,
-    for data you cache and query many times, and for sparse records you need counted exactly. We are
-    working on the primer and the encoder to cut this reasoning overhead, and will update these numbers.
+    The first version of LWON wrote every key by position. On sparse data that made models count their
+    way through rows full of <code>~</code>, and a question cost up to three times as much as with JSON.
+    LWON now writes keys most rows lack by name, which brought the cost close to JSON's even there.
+  </p>
+  <p>
+    Use LWON for large payloads the model reads. Keep JSON for payloads of a few hundred tokens, where the
+    primer costs more than LWON saves, and check your own prompts if they need exact counts over many
+    sparse records, where JSON was marginally more accurate in our tests.
   </p>
 </Prose>
 

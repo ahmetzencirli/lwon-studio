@@ -11,6 +11,8 @@ const pct = (n: number, base: number) => {
   return d === 0 ? '±0%' : d > 0 ? `+${d}%` : `−${-d}%`;
 };
 const formats: Fmt[] = ['json', 'toon', 'lwon'];
+const sparseTotal = sparse.accuracy.reduce((n, a) => n + a.cells.lwon.total, 0);
+const sparseMissed = Object.fromEntries(formats.map((f) => [f, sparse.accuracy.reduce((n, a) => n + a.cells[f].total - a.cells[f].correct, 0)])) as Record<Fmt, number>;
 const headings = [
   { depth: 2, slug: 'tokens', text: 'Claude tokens' },
   { depth: 2, slug: 'accuracy', text: 'Accuracy' },
@@ -98,10 +100,9 @@ const headings = [
     </table>
   </div>
   <p>
-    At the default (medium) effort, every model answered every question correctly in every format.
-    With thinking turned down to low effort, Haiku miscounted once in LWON, on how many log events carry
-    an optional field (22 instead of 23). One miss is too few to call a trend, but it marked the case to
-    test harder: counting keys that are absent from some rows.
+    Every model answered every question correctly in every format, including Haiku with thinking turned
+    down to low effort. LWON 0.x, which wrote every key by position, missed one count at low effort; the
+    current encoding did not.
   </p>
 
   <h2 id="sparse">Harder test: sparse data</h2>
@@ -127,19 +128,26 @@ const headings = [
     </table>
   </div>
   <p>
-    LWON scored like JSON. Every wrong answer, in every format, was a count over 150 rows that was off
-    by one or two. Every question about a single row, including absent versus null, was answered
-    correctly. TOON counted slightly better: on irregular data it writes one <code>key: value</code> line
-    per field and states the row count, which makes keys easy to tally but costs
-    {change(sparse.tokens.toon.raw, sparse.tokens.lwon.raw)} more tokens than LWON.
+    Over all runs, models got {sparseMissed.lwon} of {sparseTotal} answers wrong with LWON,
+    {sparseMissed.json} with JSON and {sparseMissed.toon} with TOON. Every wrong answer, in every
+    format, was a count over 150 rows that was off by one to three, or a sum; every question about a
+    single row, including absent versus null, was answered correctly. With this many questions, LWON and
+    JSON are within noise of each other. TOON counted best: on irregular data it writes one
+    <code>key: value</code> line per field and states the row count, which makes keys easy to tally,
+    at {change(sparse.tokens.toon.raw, sparse.tokens.lwon.raw)} more tokens than LWON.
   </p>
 
   <h2 id="cost">Cost per question</h2>
   <p>
-    Models spend more output tokens, including thinking, to read LWON: they have to match each value to
-    its field by position. Output tokens cost several times more than input, so the full cost of a
-    question depends on how the data is sent. <em>Sent once</em> prices the data as normal input;
-    <em>cached</em> prices it as a cache read, when the same data answers many questions.
+    Fewer input tokens is only half the bill. Models also spend output tokens, including thinking, to
+    read the data, and output costs several times more than input. <em>Sent once</em> prices the data as
+    normal input; <em>cached</em> prices it as a cache read, when the same data answers many questions.
+  </p>
+  <p>
+    LWON 0.x wrote every key by position, so on sparse data models had to count positions through rows
+    full of <code>~</code>: Haiku thought about four times as long as with JSON. LWON now writes keys
+    that most rows lack by name, in a <code>*</code> slot, which removed most of that extra thinking.
+    The tables compare both.
   </p>
   {([['Regular data (six datasets)', basicPerQuestion], ['Sparse data', sparse.perQuestion]] as [string, PerQuestion[]][]).map(([title, rows]) => (
     <div class="table-wrap">
@@ -148,9 +156,10 @@ const headings = [
         <thead>
           <tr>
             <th scope="col">Model</th>
-            <th scope="col" class="num">Output tokens JSON → LWON</th>
+            <th scope="col" class="num">Output tokens JSON / LWON 0.x / LWON</th>
             <th scope="col" class="num">LWON sent once</th>
             <th scope="col" class="num">LWON cached</th>
+            <th scope="col" class="num">LWON 0.x cached</th>
             <th scope="col" class="num">TOON sent once</th>
           </tr>
         </thead>
@@ -158,9 +167,10 @@ const headings = [
           {rows.map((r) => (
             <tr>
               <th scope="row">{r.label}</th>
-              <td class="num">{fmt(Math.round(r.cells.json.output))} → {fmt(Math.round(r.cells.lwon.output))}</td>
+              <td class="num">{fmt(Math.round(r.cells.json.output))} / {r.cells['lwon-positional'] ? fmt(Math.round(r.cells['lwon-positional'].output)) : '–'} / {fmt(Math.round(r.cells.lwon.output))}</td>
               <td class="num" class:list={['num', r.cells.lwon.once < r.cells.json.once ? 'good' : 'miss']}>{change(r.cells.lwon.once, r.cells.json.once)}</td>
               <td class="num" class:list={['num', r.cells.lwon.cached < r.cells.json.cached ? 'good' : 'miss']}>{change(r.cells.lwon.cached, r.cells.json.cached)}</td>
+              <td class="num">{r.cells['lwon-positional'] ? change(r.cells['lwon-positional'].cached, r.cells.json.cached) : '–'}</td>
               <td class="num">{change(r.cells.toon.once, r.cells.json.once)}</td>
             </tr>
           ))}
@@ -169,10 +179,9 @@ const headings = [
     </div>
   ))}
   <p>
-    On regular data sent once, LWON is the cheapest format for every model. When the same data is cached
-    and reused, the extra thinking cancels the saving. On sparse data with counting, LWON costs more,
-    most of all with Haiku. Cutting this reasoning overhead, through the primer and the encoder, is the
-    next piece of work.
+    On regular data LWON is now the cheapest of the three formats for every model when the data is sent
+    once, and cheaper than JSON when it is cached and reused. On sparse data with counting it is cheaper
+    than JSON sent once and slightly more expensive cached, where LWON 0.x cost up to three times as much.
   </p>
 
   <h2 id="o200k">Another tokenizer</h2>

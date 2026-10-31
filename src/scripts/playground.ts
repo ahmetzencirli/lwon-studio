@@ -8,6 +8,7 @@ const jsonError = $('json-error');
 const lwonError = $('lwon-error');
 const sampleSelect = $<HTMLSelectElement>('sample');
 const bareToggle = $<HTMLInputElement>('bare');
+const keyedToggle = $<HTMLInputElement>('keyed');
 const status = $('roundtrip');
 const announcer = $('announcer');
 
@@ -56,7 +57,7 @@ function fromJson() {
   lwonArea.classList.remove('is-stale');
   jsonArea.classList.remove('is-stale');
   current = value;
-  lwonArea.value = encode(value, { bareStrings: bareToggle.checked });
+  lwonArea.value = encode(value, options());
   save();
   update();
 }
@@ -86,12 +87,18 @@ const debounce = (fn: () => void, ms: number) => {
 };
 jsonArea.addEventListener('input', debounce(fromJson, 150));
 lwonArea.addEventListener('input', debounce(fromLwon, 150));
-bareToggle.addEventListener('change', () => {
-  if (current !== undefined) {
-    lwonArea.value = encode(current, { bareStrings: bareToggle.checked });
-    update();
-  }
-});
+/** Keys in fewer than half the rows go to the `*` slot unless the toggle is off. */
+function options() {
+  return { bareStrings: bareToggle.checked, keyedBelow: keyedToggle.checked ? 0.5 : 0 };
+}
+for (const toggle of [bareToggle, keyedToggle]) {
+  toggle.addEventListener('change', () => {
+    if (current !== undefined) {
+      lwonArea.value = encode(current, options());
+      update();
+    }
+  });
+}
 
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(current)); } catch {}

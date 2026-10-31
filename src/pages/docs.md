@@ -54,6 +54,24 @@ encode(value, { bareStrings: false });
 | Option | Default | Effect |
 |---|---|---|
 | `bareStrings` | `true` | Write strings such as `Alice` or `user@example.com` without quotes. Set `false` to quote every string. |
+| `keyedBelow` | `0.5` | Keys found in fewer than this share of the rows are written by name in the row's `*` slot instead of by position. Set `0` to keep every key positional. |
+
+### Sparse keys
+
+When most objects lack a key, writing it by position fills rows with `~`, and
+language models spend extra reasoning to line the values up. By default such
+keys move to a `*` slot at the end of the header, and each row names them:
+
+```text
+id level userId *
+[
+[1 info 7]
+[2 warn ~ {"retry":2,"region":null}]
+]
+```
+
+In our evals this brought the extra reasoning on sparse data close to JSON's,
+at the cost of a few more tokens. See [Benchmarks](benchmarks#cost).
 
 ## Errors
 

@@ -29,6 +29,11 @@ const ideas = [
     code: encode([{ title: 'Docs', children: [{ title: 'Spec', children: [] }, { title: 'API', children: [] }] }]),
   },
   {
+    title: 'Rare keys go by name',
+    body: 'Keys most rows lack move to a * slot at the end of the header, and each row names them. Models read sparse data without counting positions.',
+    code: encode([{ id: 1, level: 'info', userId: 7 }, { id: 2, level: 'warn', userId: 9 }, { id: 3, level: 'error', retry: 2 }]),
+  },
+  {
     title: 'Anything else stays JSON',
     body: 'A value that does not fit the header is written as plain JSON in its slot. Nothing is ever dropped.',
     code: encode([{ id: 1, data: 'text' }, { id: 2, data: [1, { deep: true }] }]),
@@ -65,11 +70,11 @@ const ideas = [
   <section class="section" aria-labelledby="how">
     <div class="container">
       <span class="eyebrow">How it works</span>
-      <h2 id="how">Four rules cover every JSON value.</h2>
+      <h2 id="how">Five rules cover every JSON value.</h2>
       <p class="lead">The examples below are real encoder output.</p>
       <div class="grid grid-2 ideas">
         {ideas.map((idea, i) => (
-          <article class="card idea" data-reveal style={`transition-delay:${i * 70}ms`}>
+          <article class:list={['card', 'idea', { wide: i === ideas.length - 1 }]} data-reveal style={`transition-delay:${i * 70}ms`}>
             <h3>{idea.title}</h3>
             <p class="muted">{idea.body}</p>
             <Code code={idea.code} label="LWON" />
@@ -173,6 +178,7 @@ const ideas = [
 
   .ideas { margin-top: 36px; }
   .idea h3 { margin-bottom: 6px; }
+  @media (min-width: 760px) { .idea.wide { grid-column: 1 / -1; } }
   .idea p { font-size: 0.95rem; }
 
   .more { margin: 20px 0 0; font-weight: 600; }

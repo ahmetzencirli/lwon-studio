@@ -4,6 +4,8 @@ import evalResults from '../data/eval.json';
 import sparseResults from '../data/eval-sparse.json';
 
 export type Fmt = 'json' | 'toon' | 'lwon';
+/** `lwon-positional` is LWON 0.x: every key by position, first primer. */
+export type Variant = Fmt | 'lwon-positional';
 type TokenCell = { raw: number; prompt: number };
 
 /** Haiku, Sonnet and Opus 5.5 share a tokenizer, so any of them gives the Claude counts. */
@@ -41,8 +43,8 @@ export const primerTokens = Math.round(
   datasets.reduce((s, d) => s + d.lwonWithPrimer - d.claude.lwon, 0) / datasets.length,
 );
 
-export interface Accuracy { label: string; cells: Record<Fmt, { correct: number; total: number }> }
-export interface PerQuestion { label: string; cells: Record<Fmt, { output: number; once: number; cached: number }> }
+export interface Accuracy { label: string; cells: Record<Fmt, { correct: number; total: number }> & Partial<Record<Variant, { correct: number; total: number }>> }
+export interface PerQuestion { label: string; cells: Record<Fmt, { output: number; once: number; cached: number }> & Partial<Record<Variant, { output: number; once: number; cached: number }>> }
 
 const order = ['claude-haiku-5-5', 'claude-haiku-5-5 (effort low)', 'claude-sonnet-5-5', 'claude-opus-5-5'];
 const pretty = (label: string) =>
