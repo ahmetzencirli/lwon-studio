@@ -81,9 +81,28 @@ const response = await client.messages.create({
 
   <h2 id="mcp">MCP servers</h2>
   <p>
-    Many MCP servers return large JSON tool results. A proxy that sits between the client and any MCP
-    server and converts those results to LWON is planned, so existing servers save tokens without code
-    changes. Follow progress on <a href="https://github.com/ahmetzencirli/lwon">GitHub</a>.
+    Many MCP servers return large JSON tool results. <a href="https://www.npmjs.com/package/@lwon/mcp-proxy"><code>@lwon/mcp-proxy</code></a>
+    sits between your client and any stdio MCP server and turns those results into LWON before the model
+    sees them. The server needs no changes: put <code>npx -y @lwon/mcp-proxy --</code> in front of the
+    command that starts it.
+  </p>
+  <Shiki lang="bash" themes={themes} code={`claude mcp add github -- npx -y @lwon/mcp-proxy -- npx -y @modelcontextprotocol/server-github`} />
+  <p>In Claude Desktop's <code>claude_desktop_config.json</code>, or a project's <code>.mcp.json</code>:</p>
+  <Shiki lang="json" themes={themes} code={`{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@lwon/mcp-proxy", "--", "npx", "-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "..." }
+    }
+  }
+}`} />
+  <p>
+    The proxy converts a <code>tools/call</code> result only when it is JSON, at least 2,000 characters
+    long and at least 10% shorter as LWON; everything else passes through unchanged. It adds the primer
+    to the server's instructions, so the model reads it once per session. It runs on your machine as a
+    child process of your client, so no data goes anywhere else. Options, such as which tools to convert,
+    are in the <a href="https://github.com/ahmetzencirli/lwon/tree/main/packages/mcp-proxy#options">README</a>.
   </p>
 
   <h2 id="accuracy">Accuracy</h2>

@@ -114,6 +114,18 @@ npx @lwon/core primer                         # print the prompt primer
 Every command reads standard input when no file is given. Installed globally
 (`npm install -g @lwon/core`), the command is simply `lwon`.
 
+## MCP servers
+
+[`@lwon/mcp-proxy`](https://www.npmjs.com/package/@lwon/mcp-proxy) converts the
+JSON tool results of any stdio MCP server to LWON. Put it in front of the
+server's command:
+
+```bash
+npx -y @lwon/mcp-proxy -- npx -y @modelcontextprotocol/server-github
+```
+
+Setup for Claude Code and Claude Desktop is on the [For AI](ai#mcp) page.
+
 ## Other languages
 
 The [conformance suite](https://github.com/ahmetzencirli/lwon/tree/main/conformance)
