@@ -1,5 +1,6 @@
 ---
 import Logo from './Logo.astro';
+import { url, pagePath } from '../lib/url.ts';
 
 const links = [
   { href: '/playground', label: 'Playground' },
@@ -8,11 +9,11 @@ const links = [
   { href: '/ai', label: 'For AI' },
   { href: '/benchmarks', label: 'Benchmarks' },
 ];
-const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
+const path = pagePath(Astro.url.pathname);
 ---
 <header class="nav">
   <div class="container nav-inner">
-    <a href="/" class="brand" aria-label="LWON home">
+    <a href={url('/')} class="brand" aria-label="LWON home">
       <Logo />
       <span>LWON</span>
     </a>
@@ -20,7 +21,7 @@ const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/'
     <nav aria-label="Main" class="nav-links" id="nav-links">
       <ul>
         {links.map((l) => (
-          <li><a href={l.href} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a></li>
+          <li><a href={url(l.href)} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a></li>
         ))}
       </ul>
     </nav>

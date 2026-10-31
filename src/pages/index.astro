@@ -5,6 +5,7 @@ import BenchChart from '../components/BenchChart.astro';
 import Code from '../components/Code.astro';
 import { encode } from '../lib/lwon/index.ts';
 import bench from '../data/bench.json';
+import { url } from '../lib/url.ts';
 
 const savings = bench.results.map((r) => Math.round((1 - r.tokens.lwon / r.tokens.min) * 100));
 const range = `${Math.min(...savings)}–${Math.max(...savings)}%`;
@@ -44,8 +45,8 @@ const ideas = [
           API and tool data.
         </p>
         <div class="actions">
-          <a class="btn btn-primary" href="/playground">Try it with your JSON</a>
-          <a class="btn btn-ghost" href="/spec">Read the spec</a>
+          <a class="btn btn-primary" href={url('/playground')}>Try it with your JSON</a>
+          <a class="btn btn-ghost" href={url('/spec')}>Read the spec</a>
         </div>
         <ul class="facts" aria-label="Key facts">
           <li>Any JSON value</li>
@@ -85,7 +86,7 @@ const ideas = [
         another format built for LLMs. LWON's lead grows with nesting.
       </p>
       <BenchChart />
-      <p class="more"><a href="/benchmarks">Method and full results →</a></p>
+      <p class="more"><a href={url('/benchmarks')}>Method and full results →</a></p>
     </div>
   </section>
 
@@ -127,7 +128,7 @@ const ideas = [
           Encode them as LWON in your tool layer and send a 220-token primer once, so the model reads the
           same data for fewer tokens.
         </p>
-        <a class="btn btn-ghost" href="/ai">Read the AI guide</a>
+        <a class="btn btn-ghost" href={url('/ai')}>Read the AI guide</a>
       </div>
       <ol class="flow" data-reveal aria-label="Where LWON fits">
         <li class="flow-step"><span class="flow-kicker">1 · Your tool or API</span><code>JSON</code></li>
@@ -141,7 +142,7 @@ const ideas = [
     <div class="container cta-inner" data-reveal>
       <h2>See what LWON does to your data.</h2>
       <p class="lead">Paste any JSON. The playground converts both ways and counts the tokens in your browser.</p>
-      <a class="btn btn-primary" href="/playground">Open the playground</a>
+      <a class="btn btn-primary" href={url('/playground')}>Open the playground</a>
     </div>
   </section>
 </Base>

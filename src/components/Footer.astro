@@ -1,19 +1,20 @@
 ---
 import Logo from './Logo.astro';
+import { url } from '../lib/url.ts';
 ---
 <footer class="footer">
   <div class="container footer-inner">
     <div class="footer-brand">
-      <a href="/" class="brand"><Logo size={24} /><span>LWON</span></a>
+      <a href={url('/')} class="brand"><Logo size={24} /><span>LWON</span></a>
       <p class="muted">Lightweight Object Notation. Created by Ahmet Zencirli. Apache-2.0.</p>
     </div>
     <nav aria-label="Footer">
       <ul>
-        <li><a href="/playground">Playground</a></li>
-        <li><a href="/docs">Docs</a></li>
-        <li><a href="/spec">Specification</a></li>
-        <li><a href="/ai">For AI</a></li>
-        <li><a href="/benchmarks">Benchmarks</a></li>
+        <li><a href={url('/playground')}>Playground</a></li>
+        <li><a href={url('/docs')}>Docs</a></li>
+        <li><a href={url('/spec')}>Specification</a></li>
+        <li><a href={url('/ai')}>For AI</a></li>
+        <li><a href={url('/benchmarks')}>Benchmarks</a></li>
         <li><a href="https://github.com/ahmetzencirli/lwon">GitHub</a></li>
       </ul>
     </nav>

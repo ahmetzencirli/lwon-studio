@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import { url } from '../lib/url.ts';
 
 interface Props {
   title: string;
@@ -23,7 +24,7 @@ const fullTitle = title === 'LWON' ? 'LWON — JSON with the keys written once' 
     <meta property="og:description" content={description} />
     <meta name="theme-color" content="#fbfcfd" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#050a16" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
     <script is:inline>
       // Runs before paint so the saved theme never flashes.
       (function () {

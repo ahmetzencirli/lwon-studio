@@ -12,7 +12,7 @@ runs in Node.js 20+, Deno, Bun and browsers.
 > **Status:** LWON is in 1.0 beta. The `lwon` package will be published to npm
 > once the format is final. Until then, use the source from
 > [GitHub](https://github.com/ahmetzencirli/lwon) or try it in the
-> [playground](/playground).
+> [playground](playground).
 
 ## Install
 
@@ -76,7 +76,7 @@ try {
 ## Prompts
 
 `PRIMER` is a short explanation of the format for language models. Send it once
-alongside LWON data. See [For AI](/ai) for when this pays off.
+alongside LWON data. See [For AI](ai) for when this pays off.
 
 ```ts
 import { encode, PRIMER } from 'lwon';

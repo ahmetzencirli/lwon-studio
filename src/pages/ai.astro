@@ -5,6 +5,7 @@ import Prose from '../layouts/Prose.astro';
 import Code from '../components/Code.astro';
 import { PRIMER } from '../lib/lwon/index.ts';
 import bench from '../data/bench.json';
+import { url } from '../lib/url.ts';
 
 const primerTokens = countTokens(PRIMER).length;
 const savings = bench.results.map((r) => 1 - r.tokens.lwon / r.tokens.min);
@@ -33,7 +34,7 @@ const headings = [
   <p>
     In a JSON array of 100 records, every key is written 100 times, wrapped in quotes and followed by a
     colon. LWON writes each key once in a header and lists only the values after it. The more records
-    and the deeper the nesting, the bigger the gap. See the <a href="/benchmarks">benchmarks</a>.
+    and the deeper the nesting, the bigger the gap. See the <a href={url('/benchmarks')}>benchmarks</a>.
   </p>
 
   <h2 id="before">Convert before the model reads it</h2>

@@ -2,6 +2,7 @@
 import Prose from '../layouts/Prose.astro';
 import BenchChart from '../components/BenchChart.astro';
 import bench from '../data/bench.json';
+import { url } from '../lib/url.ts';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 const pct = (n: number, base: number) => {
@@ -61,7 +62,7 @@ const headings = [
 
   <h2 id="method">Method</h2>
   <ul>
-    <li>Datasets are generated from a fixed seed so every run is identical. You can load each one in the <a href="/playground">playground</a>.</li>
+    <li>Datasets are generated from a fixed seed so every run is identical. You can load each one in the <a href={url('/playground')}>playground</a>.</li>
     <li>Tokens are counted with the {bench.tokenizer} tokenizer.</li>
     <li>The baseline is minified JSON. Indented JSON is shown for reference only; comparing against it would overstate the savings.</li>
     <li>TOON output uses {bench.toon} with default options.</li>
@@ -72,7 +73,7 @@ const headings = [
   <ul>
     <li>o200k is one tokenizer. Claude and Gemini tokenize differently; their counts are being added.</li>
     <li>The datasets are synthetic, shaped after common API and tool payloads.</li>
-    <li>Token count is not comprehension. Accuracy tests with real models are in progress, see <a href="/ai#accuracy">For AI</a>.</li>
+    <li>Token count is not comprehension. Accuracy tests with real models are in progress, see <a href={url('/ai#accuracy')}>For AI</a>.</li>
   </ul>
 
   <h2 id="reproduce">Reproduce</h2>
